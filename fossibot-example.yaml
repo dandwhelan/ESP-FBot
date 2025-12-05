@@ -38,13 +38,9 @@ wifi:
 # Captive portal for easy WiFi setup
 captive_portal:
 
-# Enable web server (optional)
-web_server:
-  port: 80
-
 # Load external component
 external_components:
-  - source: github://ylianst/esp-fossibot
+  - source: github://ylianst/esp-fbot
     refresh: 10s
 
 # Enable BLE scanning
