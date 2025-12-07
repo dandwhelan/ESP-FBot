@@ -22,7 +22,7 @@ Basically, any power station that works with the "BrightEMS" application. You no
 
 - A compatible battery that makes use of the "BrightEMS" application. You do not need to pair the battery to WIFI.
 - You need [Home Assistant](https://www.home-assistant.io/) installed with the [ESP-Home](https://esphome.io/) add-in.
-- I suggest the [M5Stack ATOM Light](https://shop.m5stack.com/products/atom-lite-esp32-development-kit) or the [M5StickC PLUS2 ESP32 Mini](https://shop.m5stack.com/products/m5stickc-plus2-esp32-mini-iot-development-kit) device, but most ESP32 devices (ESP32-WROOM, ESP32-DevKit, etc.) will do.
+- I suggest the [M5Stack ATOM Light](https://shop.m5stack.com/products/atom-lite-esp32-development-kit) device, but most ESP32 devices (ESP32-WROOM, ESP32-DevKit, etc.) will do.
 - The ESP32 device will need to be within range of the battery (typically 10-30 feet)
 
 ## Getting the MAC address
