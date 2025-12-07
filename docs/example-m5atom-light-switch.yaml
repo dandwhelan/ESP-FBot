@@ -58,6 +58,20 @@ binary_sensor:
       name: "DC Active"
     ac_active:
       name: "AC Inverter Active"
+      on_state:
+        then:
+          - if:
+              condition:
+                binary_sensor.is_on: ac_active
+              then:
+                - light.turn_on:
+                    id: status_led
+                    red: 0%
+                    green: 100%
+                    blue: 0%
+                    brightness: 50%
+              else:
+                - light.turn_off: status_led
     light_active:
       name: "Light Active"
   - platform: gpio
@@ -76,38 +90,6 @@ sensor:
     battery_level:
       name: "Battery"
       id: battery_percent
-      on_value:
-        then:
-          - if:
-              condition:
-                lambda: 'return x > 30;'
-              then:
-                - light.turn_on:
-                    id: status_led
-                    red: 0%
-                    green: 100%
-                    blue: 0%
-                    brightness: 50%
-          - if:
-              condition:
-                lambda: 'return x > 15 && x <= 30;'
-              then:
-                - light.turn_on:
-                    id: status_led
-                    red: 100%
-                    green: 100%
-                    blue: 0%
-                    brightness: 50%
-          - if:
-              condition:
-                lambda: 'return x <= 15;'
-              then:
-                - light.turn_on:
-                    id: status_led
-                    red: 100%
-                    green: 0%
-                    blue: 0%
-                    brightness: 50%
     # Optional sensors for the state of charge of extra battery 1
     battery_s1_level:
       name: "Battery S1"
