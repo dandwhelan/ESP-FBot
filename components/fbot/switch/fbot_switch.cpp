@@ -24,9 +24,11 @@ void FbotSwitch::write_state(bool state) {
     return;
   }
   
-  // Check if device is available before allowing control
-  if (!this->parent_->is_switches_available()) {
-    ESP_LOGW(TAG, "Cannot control switch - device not connected");
+  // Check if device is connected before allowing switch changes
+  if (!this->parent_->is_connected()) {
+    ESP_LOGW(TAG, "Cannot change switch '%s': device is disconnected", this->switch_type_.c_str());
+    // Immediately publish the current state (false) to reject the change
+    this->publish_state(false);
     return;
   }
   

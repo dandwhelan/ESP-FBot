@@ -81,8 +81,8 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   void control_ac(bool state);
   void control_light(bool state);
   
-  // Availability check
-  bool is_switches_available() const { return this->switches_available_; }
+  // Connection state getter
+  bool is_connected() const { return connected_; }
   
  protected:
   // BLE characteristics
@@ -124,9 +124,6 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   switch_::Switch *ac_switch_{nullptr};
   switch_::Switch *light_switch_{nullptr};
   
-  // Track switch availability
-  bool switches_available_{false};
-  
   // Protocol methods
   uint16_t calculate_checksum(const uint8_t *data, size_t len);
   void generate_command_bytes(uint8_t address, uint16_t reg, uint16_t value, uint8_t *output);
@@ -139,7 +136,6 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   void update_connected_state(bool state);
   void reset_sensors_to_unknown();
   void check_poll_timeout();
-  void update_switches_availability(bool available);
 };
 
 }  // namespace fbot

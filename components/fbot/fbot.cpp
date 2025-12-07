@@ -22,9 +22,6 @@ void Fbot::setup() {
   if (this->connected_binary_sensor_ != nullptr) {
     this->connected_binary_sensor_->publish_state(false);
   }
-  
-  // Disable switches initially (device not connected)
-  this->update_switches_availability(false);
 }
 
 void Fbot::loop() {
@@ -316,9 +313,6 @@ void Fbot::update_connected_state(bool state) {
   if (this->connected_binary_sensor_ != nullptr) {
     this->connected_binary_sensor_->publish_state(state);
   }
-  
-  // Enable/disable switches based on connection state
-  this->update_switches_availability(state);
 }
 
 // Control methods
@@ -410,29 +404,6 @@ void Fbot::reset_sensors_to_unknown() {
   }
   if (this->light_active_binary_sensor_ != nullptr) {
     this->light_active_binary_sensor_->publish_state(false);
-  }
-}
-
-void Fbot::update_switches_availability(bool available) {
-  // Track availability state
-  this->switches_available_ = available;
-  
-  // Mark switches as unavailable in Home Assistant when disconnected
-  if (!available) {
-    // By not publishing any state, the switches will show as unavailable in Home Assistant
-    // after the entity timeout period. We mark the state but don't publish.
-    if (this->usb_switch_ != nullptr) {
-      this->usb_switch_->state = false;
-    }
-    if (this->dc_switch_ != nullptr) {
-      this->dc_switch_->state = false;
-    }
-    if (this->ac_switch_ != nullptr) {
-      this->ac_switch_->state = false;
-    }
-    if (this->light_switch_ != nullptr) {
-      this->light_switch_->state = false;
-    }
   }
 }
 
