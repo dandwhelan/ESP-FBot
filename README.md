@@ -138,7 +138,6 @@ sensor:
     device_class: duration
     state_class: measurement
     update_interval: 5s
-
   # Net power (positive = charging, negative = discharging)
   - platform: template
     name: "Net Power"
