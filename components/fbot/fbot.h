@@ -84,6 +84,9 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   // Connection state getter
   bool is_connected() const { return connected_; }
   
+  // Switch availability management
+  void update_switches_availability(bool available);
+  
  protected:
   // BLE characteristics
   uint16_t write_handle_;
