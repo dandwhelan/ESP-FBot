@@ -12,7 +12,7 @@ CONF_DC_ACTIVE = "dc_active"
 CONF_AC_ACTIVE = "ac_active"
 CONF_LIGHT_ACTIVE = "light_active"
 
-DEVICE_CLASS_OUTLET = "switch"
+DEVICE_CLASS_OUTLET = "plug"
 DEVICE_CLASS_LIGHT = "light"
 
 CONFIG_SCHEMA = cv.Schema(
