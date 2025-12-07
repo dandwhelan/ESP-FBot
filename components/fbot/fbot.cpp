@@ -247,8 +247,9 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   
   // Parse key registers
   float battery_percent = this->get_register(data, length, 56) / 10.0f;
-  float battery_percent_s1 = this->get_register(data, length, 53) / 10.0f;
-  float battery_percent_s2 = this->get_register(data, length, 55) / 10.0f;
+  // Slave batteries (S1 / S2) ranges are 1 to 101, 0 means disconnected. Adding -1 to get proper range.
+  float battery_percent_s1 = this->get_register(data, length, 53) / 10.0f - 1.0f;
+  float battery_percent_s2 = this->get_register(data, length, 55) / 10.0f - 1.0f;
   uint16_t input_watts = this->get_register(data, length, 3);
   uint16_t output_watts = this->get_register(data, length, 39);
   uint16_t system_watts = this->get_register(data, length, 21);
