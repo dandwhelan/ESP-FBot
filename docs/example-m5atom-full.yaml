@@ -46,44 +46,63 @@ binary_sensor:
     fbot_id: my_fbot
     connected:
       name: "Connected"
+      id: connected
+      on_state:
+        then:
+          # When connection state changes, update the LED
+          - script.execute: update_led
     # Optional sensors to indicate if the extra batteries 1 is connected
-    battery_connected_s1:
-      name: "Connected S1"
+    #battery_connected_s1:
+    #  name: "Connected S1"
     # Optional sensors to indicate if the extra batteries 2 is connected
-    battery_connected_s2:
-      name: "Connected S2"
+    #battery_connected_s2:
+    #  name: "Connected S2"
     usb_active:
+      internal: true
       name: "USB Active"
     dc_active:
+      internal: true
       name: "DC Active"
     ac_active:
+      internal: true
       name: "AC Inverter Active"
+      id: ac_active
+      on_state:
+        then:
+          # When AC state changes, update the LED
+          - script.execute: update_led
     light_active:
+      internal: true
       name: "Light Active"
   - platform: gpio
     pin:
       number: 39
       inverted: true
     name: M5Atom Button
+    internal: true
     on_press:
       then:
       - switch.toggle: light_switch
 
-# Sensors for battery and power rea  dings
+# Sensors for battery and power readings
 sensor:
   - platform: fbot
     fbot_id: my_fbot
     battery_level:
       name: "Battery"
       id: battery_percent
+      on_value:
+        then:
+          # When battery level changes, update the LED
+          - script.execute: update_led
     # Optional sensors for the state of charge of extra battery 1
-    battery_s1_level:
-      name: "Battery S1"
-      id: battery_percent_s1
+    #battery_s1_level:
+    #  name: "Battery S1"
+    #  id: battery_percent_s1
     # Optional sensors for the state of charge of extra battery 2
-    battery_s2_level:
-      name: "Battery S2"
-      id: battery_percent_s2
+    #battery_s2_level:
+    #  name: "Battery S2"
+    #  id: battery_percent_s2
     input_power:
       name: "Input Power"
       id: input_watts
@@ -97,6 +116,7 @@ sensor:
       name: "Total Power"
       id: total_watts
     remaining_time:
+      internal: true
       name: "Remaining Minutes"
       id: remaining_minutes
   # Convert remaining time from minutes to hours
@@ -125,6 +145,83 @@ sensor:
     device_class: power
     state_class: measurement
     update_interval: 5s
+
+# Script to update LED based on connection, AC state, and battery level
+script:
+  - id: update_led
+    then:
+      - if:
+          condition:
+            binary_sensor.is_off: connected
+          then:
+            # Battery not connected - show white
+            - light.turn_on:
+                id: status_led
+                red: 100%
+                green: 100%
+                blue: 100%
+                brightness: 50%
+          else:
+            # Battery is connected
+            - if:
+                condition:
+                  binary_sensor.is_off: ac_active
+                then:
+                  # AC not active - turn off LED
+                  - light.turn_off: status_led
+                else:
+                  # AC is active - show battery level
+                  - if:
+                      condition:
+                        lambda: 'return id(battery_percent).state > 30;'
+                      then:
+                        # Green for > 30%
+                        - light.turn_on:
+                            id: status_led
+                            red: 0%
+                            green: 100%
+                            blue: 0%
+                            brightness: 50%
+                  - if:
+                      condition:
+                        lambda: 'return id(battery_percent).state > 15 && id(battery_percent).state <= 30;'
+                      then:
+                        # Yellow for 15-30%
+                        - light.turn_on:
+                            id: status_led
+                            red: 100%
+                            green: 100%
+                            blue: 0%
+                            brightness: 50%
+                  - if:
+                      condition:
+                        lambda: 'return id(battery_percent).state <= 15;'
+                      then:
+                        # Red for <= 15%
+                        - light.turn_on:
+                            id: status_led
+                            red: 100%
+                            green: 0%
+                            blue: 0%
+                            brightness: 50%
+
+# RGB LED on M5 ATOM (Pin 27, WS2812B)
+light:
+  - platform: esp32_rmt_led_strip
+    internal: true
+    chipset: WS2812
+    pin: 27
+    num_leds: 1
+    rgb_order: GRB
+    id: status_led
+    name: "M5Atom Status LED"
+    default_transition_length: 0.5s
+    restore_mode: ALWAYS_ON
+    effects:
+      - pulse:
+          name: "Pulse"
+          transition_length: 1s
+          update_interval: 1s
 
 # Switches to control outputs
 switch:

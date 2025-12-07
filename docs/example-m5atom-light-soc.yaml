@@ -172,7 +172,6 @@ light:
     pin: 27
     num_leds: 1
     rgb_order: GRB
-    rmt_channel: 0
     id: status_led
     name: "M5Atom Status LED"
     default_transition_length: 0.5s
