@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import binary_sensor
-from esphome.const import CONF_ID, DEVICE_CLASS_CONNECTIVITY
+from esphome.const import CONF_ID, DEVICE_CLASS_CONNECTIVITY, CONF_ICON
 from . import fbot_ns, Fbot, CONF_FBOT_ID
 
 DEPENDENCIES = ["fbot"]
@@ -32,6 +32,7 @@ CONFIG_SCHEMA = cv.Schema(
         ),
         cv.Optional(CONF_LIGHT_ACTIVE): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_LIGHT,
+            icon="mdi:lightbulb",
         ),
     }
 )
