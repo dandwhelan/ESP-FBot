@@ -51,6 +51,8 @@ void Fbot::dump_config() {
   LOG_SENSOR("  ", "Total Power", this->total_power_sensor_);
   LOG_SENSOR("  ", "Remaining Time", this->remaining_time_sensor_);
   LOG_BINARY_SENSOR("  ", "Connected", this->connected_binary_sensor_);
+  LOG_BINARY_SENSOR("  ", "Battery S1 Connected", this->battery_connected_s1_binary_sensor_);
+  LOG_BINARY_SENSOR("  ", "Battery S2 Connected", this->battery_connected_s2_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "USB Active", this->usb_active_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "DC Active", this->dc_active_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "AC Active", this->ac_active_binary_sensor_);
@@ -247,9 +249,21 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   
   // Parse key registers
   float battery_percent = this->get_register(data, length, 56) / 10.0f;
-  // Slave batteries (S1 / S2) ranges are 1 to 101, 0 means disconnected. Adding -1 to get proper range.
+  // Extra batteries (S1 / S2) ranges are 1 to 101, 0 means disconnected. Adding -1 to get proper range.
   float battery_percent_s1 = this->get_register(data, length, 53) / 10.0f - 1.0f;
   float battery_percent_s2 = this->get_register(data, length, 55) / 10.0f - 1.0f;
+  
+  // Determine if extra batteries are connected (raw value of 0 means disconnected)
+  bool battery_s1_connected = this->get_register(data, length, 53) > 0;
+  bool battery_s2_connected = this->get_register(data, length, 55) > 0;
+  
+  // Set to NAN if battery percentages are outside valid range (0-100)
+  if (battery_percent_s1 < 0.0f || battery_percent_s1 > 100.0f) {
+    battery_percent_s1 = NAN;
+  }
+  if (battery_percent_s2 < 0.0f || battery_percent_s2 > 100.0f) {
+    battery_percent_s2 = NAN;
+  }
   uint16_t input_watts = this->get_register(data, length, 3);
   uint16_t output_watts = this->get_register(data, length, 39);
   uint16_t system_watts = this->get_register(data, length, 21);
@@ -281,6 +295,14 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   }
   if (this->remaining_time_sensor_ != nullptr) {
     this->remaining_time_sensor_->publish_state(remaining_minutes);
+  }
+  
+  // Update binary sensors for battery connection status
+  if (this->battery_connected_s1_binary_sensor_ != nullptr) {
+    this->battery_connected_s1_binary_sensor_->publish_state(battery_s1_connected);
+  }
+  if (this->battery_connected_s2_binary_sensor_ != nullptr) {
+    this->battery_connected_s2_binary_sensor_->publish_state(battery_s2_connected);
   }
   
   // Update binary sensors for output states
@@ -316,8 +338,9 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
     this->light_switch_->publish_state(light_state);
   }
   
-  ESP_LOGD(TAG, "Battery: %.1f%% %.1f%% %.1f%%, Input: %dW, Output: %dW, USB: %d, DC: %d, AC: %d", 
-           battery_percent, battery_percent_s1, battery_percent_s2, input_watts, output_watts, usb_state, dc_state, ac_state);
+  ESP_LOGD(TAG, "Battery: %.1f%% S1:%.1f%%(con:%d) S2:%.1f%%(con:%d), Input: %dW, Output: %dW, USB: %d, DC: %d, AC: %d", 
+           battery_percent, battery_percent_s1, battery_s1_connected, battery_percent_s2, battery_s2_connected, 
+           input_watts, output_watts, usb_state, dc_state, ac_state);
 }
 
 void Fbot::update_connected_state(bool state) {

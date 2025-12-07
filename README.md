@@ -97,6 +97,12 @@ binary_sensor:
     fbot_id: my_fbot
     connected:
       name: "Connected"
+    # Optional sensors to indicate if the extra batteries 1 is connected
+    battery_connected_s1:
+      name: "Connected S1"
+    # Optional sensors to indicate if the extra batteries 2 is connected
+    battery_connected_s2:
+      name: "Connected S2"
     usb_active:
       name: "USB Active"
     dc_active:
@@ -113,12 +119,13 @@ sensor:
     battery_level:
       name: "Battery"
       id: battery_percent
-    # Optional sensors if you have extra batteries 1 & 2
+    # Optional sensors for the state of charge of extra battery 1
     battery_s1_level:
-      name: "Battery"
+      name: "Battery S1"
       id: battery_percent_s1
+    # Optional sensors for the state of charge of extra battery 2
     battery_s2_level:
-      name: "Battery"
+      name: "Battery S2"
       id: battery_percent_s2
     input_power:
       name: "Input Power"

@@ -7,6 +7,8 @@ from . import fbot_ns, Fbot, CONF_FBOT_ID
 DEPENDENCIES = ["fbot"]
 
 CONF_CONNECTED = "connected"
+CONF_BATTERY_CONNECTED_S1 = "battery_connected_s1"
+CONF_BATTERY_CONNECTED_S2 = "battery_connected_s2"
 CONF_USB_ACTIVE = "usb_active"
 CONF_DC_ACTIVE = "dc_active"
 CONF_AC_ACTIVE = "ac_active"
@@ -20,6 +22,14 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(CONF_FBOT_ID): cv.use_id(Fbot),
         cv.Optional(CONF_CONNECTED): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_CONNECTIVITY,
+        ),
+        cv.Optional(CONF_BATTERY_CONNECTED_S1): binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_CONNECTIVITY,
+            icon="mdi:battery-plus",
+        ),
+        cv.Optional(CONF_BATTERY_CONNECTED_S2): binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_CONNECTIVITY,
+            icon="mdi:battery-plus",
         ),
         cv.Optional(CONF_USB_ACTIVE): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_OUTLET,
@@ -43,6 +53,14 @@ async def to_code(config):
     if CONF_CONNECTED in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_CONNECTED])
         cg.add(parent.set_connected_binary_sensor(sens))
+    
+    if CONF_BATTERY_CONNECTED_S1 in config:
+        sens = await binary_sensor.new_binary_sensor(config[CONF_BATTERY_CONNECTED_S1])
+        cg.add(parent.set_battery_connected_s1_binary_sensor(sens))
+    
+    if CONF_BATTERY_CONNECTED_S2 in config:
+        sens = await binary_sensor.new_binary_sensor(config[CONF_BATTERY_CONNECTED_S2])
+        cg.add(parent.set_battery_connected_s2_binary_sensor(sens))
     
     if CONF_USB_ACTIVE in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_USB_ACTIVE])

@@ -58,6 +58,12 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   void set_connected_binary_sensor(binary_sensor::BinarySensor *sensor) { 
     this->connected_binary_sensor_ = sensor; 
   }
+  void set_battery_connected_s1_binary_sensor(binary_sensor::BinarySensor *sensor) { 
+    this->battery_connected_s1_binary_sensor_ = sensor; 
+  }
+  void set_battery_connected_s2_binary_sensor(binary_sensor::BinarySensor *sensor) { 
+    this->battery_connected_s2_binary_sensor_ = sensor; 
+  }
   void set_usb_active_binary_sensor(binary_sensor::BinarySensor *sensor) { 
     this->usb_active_binary_sensor_ = sensor; 
   }
@@ -117,6 +123,8 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   
   // Binary sensors
   binary_sensor::BinarySensor *connected_binary_sensor_{nullptr};
+  binary_sensor::BinarySensor *battery_connected_s1_binary_sensor_{nullptr};
+  binary_sensor::BinarySensor *battery_connected_s2_binary_sensor_{nullptr};
   binary_sensor::BinarySensor *usb_active_binary_sensor_{nullptr};
   binary_sensor::BinarySensor *dc_active_binary_sensor_{nullptr};
   binary_sensor::BinarySensor *ac_active_binary_sensor_{nullptr};
