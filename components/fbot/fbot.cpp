@@ -227,20 +227,21 @@ uint16_t Fbot::get_register(const uint8_t *data, uint16_t length, uint16_t reg_i
 }
 
 void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
-  // Validate minimum length and header
+  // Validate minimum length
   if (length < 6) {
     ESP_LOGW(TAG, "Notification too short: %d bytes", length);
     return;
   }
   
+  // ANY valid notification means device is responding - reset failure counter
+  this->consecutive_poll_failures_ = 0;
+  this->last_successful_poll_ = millis();
+  
+  // Check if this is a status message
   if (data[0] != 0x11 || data[1] != 0x04) {
     ESP_LOGVV(TAG, "Skipping non-status notification");
     return;
   }
-  
-  // Successful poll received - reset failure counter
-  this->consecutive_poll_failures_ = 0;
-  this->last_successful_poll_ = millis();
   
   // Parse key registers
   float battery_percent = this->get_register(data, length, 56) / 10.0f;
