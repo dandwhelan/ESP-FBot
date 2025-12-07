@@ -24,6 +24,12 @@ void FbotSwitch::write_state(bool state) {
     return;
   }
   
+  // Check if device is available before allowing control
+  if (!this->parent_->is_switches_available()) {
+    ESP_LOGW(TAG, "Cannot control switch - device not connected");
+    return;
+  }
+  
   // Call the appropriate control method based on switch type
   if (this->switch_type_ == "usb") {
     this->parent_->control_usb(state);
