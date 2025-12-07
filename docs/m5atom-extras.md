@@ -113,3 +113,28 @@ binary_sensor:
 ```
 
 This way, if the ATOM light disconnects from the battery, the light will turn off. See a [full example configuration of this here](https://github.com/Ylianst/ESP-FBot/blob/main/docs/example-m5atom-light-soc.yaml).
+
+### Light Showing State of Switch
+
+As an alternative to showing the state of charge, in this example we are going to only turn the light on and green when the AC inverter is enabled. In the `ac_active` section, all the `on_state` text here.
+
+```yaml
+    ac_active:
+      name: "AC Inverter Active"
+      on_state:
+        then:
+          - if:
+              condition:
+                binary_sensor.is_on: ac_active
+              then:
+                - light.turn_on:
+                    id: status_led
+                    red: 0%
+                    green: 100%
+                    blue: 0%
+                    brightness: 50%
+              else:
+                - light.turn_off: status_led
+```
+
+There is also a [full example configuration of this here](https://github.com/Ylianst/ESP-FBot/blob/main/docs/example-m5atom-light-switch.yaml). You can combine this with the use of the button above to toggle the AC inverter. You can also change this code a bit to show the state of the other switches if you like.
