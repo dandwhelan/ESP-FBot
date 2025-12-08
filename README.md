@@ -28,7 +28,7 @@ Basically, any power station that works with the "BrightEMS" application. You no
 
 ## Getting the MAC address
 
-You will need to get the Bluetooth LE MAC address of your battery. Search for a Bluetooth LE device that starts with the name "FOSSIBOT" and "POWER".
+You will need to get the Bluetooth LE MAC address of your battery. Search for a Bluetooth LE device that starts with the name "FOSSIBOT" or "POWER".
 
 - On Windows, use [BluetoothLEView](https://www.nirsoft.net/utils/bluetooth_low_energy_scanner.html)
 
