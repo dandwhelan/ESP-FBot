@@ -382,12 +382,16 @@ void Fbot::control_light(bool state) {
 void Fbot::set_threshold_charge(float percent) {
   // Convert percentage to permille (multiply by 10)
   uint16_t value = static_cast<uint16_t>(percent * 10);
+  if (value < 600) { value = 600; }  // Minimum 600
+  if (value > 1000) { value = 1000; }  // Maximum 1000
   this->send_control_command(REG_THRESHOLD_CHARGE, value);
 }
 
 void Fbot::set_threshold_discharge(float percent) {
   // Convert percentage to permille (multiply by 10)
   uint16_t value = static_cast<uint16_t>(percent * 10);
+  if (value < 0) { value = 0; }  // Minimum 0
+  if (value > 500) { value = 500; }  // Maximum 500
   this->send_control_command(REG_THRESHOLD_DISCHARGE, value);
 }
 
