@@ -53,6 +53,7 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   void set_battery_percent_s1_sensor(sensor::Sensor *sensor) { this->battery_percent_s1_sensor_ = sensor; }
   void set_battery_percent_s2_sensor(sensor::Sensor *sensor) { this->battery_percent_s2_sensor_ = sensor; }
   void set_input_power_sensor(sensor::Sensor *sensor) { this->input_power_sensor_ = sensor; }
+  void set_ac_input_power_sensor(sensor::Sensor *sensor) { this->ac_input_power_sensor_ = sensor; }
   void set_output_power_sensor(sensor::Sensor *sensor) { this->output_power_sensor_ = sensor; }
   void set_system_power_sensor(sensor::Sensor *sensor) { this->system_power_sensor_ = sensor; }
   void set_total_power_sensor(sensor::Sensor *sensor) { this->total_power_sensor_ = sensor; }
@@ -134,6 +135,7 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   sensor::Sensor *battery_percent_s1_sensor_{nullptr};
   sensor::Sensor *battery_percent_s2_sensor_{nullptr};
   sensor::Sensor *input_power_sensor_{nullptr};
+  sensor::Sensor *ac_input_power_sensor_{nullptr};
   sensor::Sensor *output_power_sensor_{nullptr};
   sensor::Sensor *system_power_sensor_{nullptr};
   sensor::Sensor *total_power_sensor_{nullptr};

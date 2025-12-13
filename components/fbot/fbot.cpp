@@ -56,6 +56,7 @@ void Fbot::dump_config() {
   LOG_SENSOR("  ", "Battery S1 Percent", this->battery_percent_s1_sensor_);
   LOG_SENSOR("  ", "Battery S2 Percent", this->battery_percent_s2_sensor_);
   LOG_SENSOR("  ", "Input Power", this->input_power_sensor_);
+  LOG_SENSOR("  ", "AC Input Power", this->ac_input_power_sensor_);
   LOG_SENSOR("  ", "Output Power", this->output_power_sensor_);
   LOG_SENSOR("  ", "System Power", this->system_power_sensor_);
   LOG_SENSOR("  ", "Total Power", this->total_power_sensor_);
@@ -326,6 +327,7 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
     battery_percent_s2 = NAN;
   }
   uint16_t input_watts = this->get_register(data, length, 3);
+  uint16_t ac_input_watts = this->get_register(data, length, 6);
   uint16_t output_watts = this->get_register(data, length, 39);
   uint16_t system_watts = this->get_register(data, length, 21);
   uint16_t total_watts = this->get_register(data, length, 20);
@@ -344,6 +346,9 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   }  
   if (this->input_power_sensor_ != nullptr) {
     this->input_power_sensor_->publish_state(input_watts);
+  }
+  if (this->ac_input_power_sensor_ != nullptr) {
+    this->ac_input_power_sensor_->publish_state(ac_input_watts);
   }
   if (this->output_power_sensor_ != nullptr) {
     this->output_power_sensor_->publish_state(output_watts);
@@ -534,6 +539,9 @@ void Fbot::reset_sensors_to_unknown() {
   }
   if (this->input_power_sensor_ != nullptr) {
     this->input_power_sensor_->publish_state(NAN);
+  }
+  if (this->ac_input_power_sensor_ != nullptr) {
+    this->ac_input_power_sensor_->publish_state(NAN);
   }
   if (this->output_power_sensor_ != nullptr) {
     this->output_power_sensor_->publish_state(NAN);
