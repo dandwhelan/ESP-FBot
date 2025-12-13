@@ -9,6 +9,7 @@ MULTI_CONF = True
 
 CONF_FBOT_ID = "fbot_id"
 CONF_POLLING_INTERVAL = "polling_interval"
+CONF_SETTINGS_POLLING_INTERVAL = "settings_polling_interval"
 
 fbot_ns = cg.esphome_ns.namespace("fbot")
 Fbot = fbot_ns.class_(
@@ -20,6 +21,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(Fbot),
             cv.Optional(CONF_POLLING_INTERVAL, default="2s"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_SETTINGS_POLLING_INTERVAL, default="60s"): cv.positive_time_period_milliseconds,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -32,3 +34,4 @@ async def to_code(config):
     await ble_client.register_ble_node(var, config)
     
     cg.add(var.set_polling_interval(config[CONF_POLLING_INTERVAL]))
+    cg.add(var.set_settings_polling_interval(config[CONF_SETTINGS_POLLING_INTERVAL]))

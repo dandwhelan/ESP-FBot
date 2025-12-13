@@ -46,6 +46,7 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   
   // Configuration
   void set_polling_interval(uint32_t interval) { this->polling_interval_ = interval; }
+  void set_settings_polling_interval(uint32_t interval) { this->settings_polling_interval_ = interval; }
   
   // Sensor setters
   void set_battery_percent_sensor(sensor::Sensor *sensor) { this->battery_percent_sensor_ = sensor; }
@@ -112,10 +113,10 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   
   // Timing
   uint32_t polling_interval_{2000};
+  uint32_t settings_polling_interval_{60000};  // Default: Request settings every 60 seconds
   uint32_t last_poll_time_{0};
   uint32_t last_successful_poll_{0};
   uint32_t last_settings_request_time_{0};
-  static const uint32_t SETTINGS_REQUEST_INTERVAL = 60000;  // Request settings every 60 seconds
   
   // Connection state
   bool connected_{false};

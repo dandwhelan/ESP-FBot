@@ -40,8 +40,8 @@ void Fbot::loop() {
       this->last_poll_time_ = now;
     }
     
-    // Send settings request periodically (every 60 seconds)
-    if (now - this->last_settings_request_time_ >= SETTINGS_REQUEST_INTERVAL) {
+    // Send settings request periodically
+    if (now - this->last_settings_request_time_ >= this->settings_polling_interval_) {
       this->send_settings_request();
       this->last_settings_request_time_ = now;
     }
@@ -51,6 +51,7 @@ void Fbot::loop() {
 void Fbot::dump_config() {
   ESP_LOGCONFIG(TAG, "Fbot Battery:");
   ESP_LOGCONFIG(TAG, "  Polling interval: %ums", this->polling_interval_);
+  ESP_LOGCONFIG(TAG, "  Settings polling interval: %ums", this->settings_polling_interval_);
   LOG_SENSOR("  ", "Battery Percent", this->battery_percent_sensor_);
   LOG_SENSOR("  ", "Battery S1 Percent", this->battery_percent_s1_sensor_);
   LOG_SENSOR("  ", "Battery S2 Percent", this->battery_percent_s2_sensor_);

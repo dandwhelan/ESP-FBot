@@ -65,3 +65,9 @@ async def to_code(config):
             await cg.register_component(var, config[key])
             cg.add(var.set_parent(parent))
             cg.add(var.set_number_type(number_type))
+            
+            # Register the number component with the parent so it can receive updates
+            if key == CONF_THRESHOLD_CHARGE:
+                cg.add(parent.set_threshold_charge_number(var))
+            elif key == CONF_THRESHOLD_DISCHARGE:
+                cg.add(parent.set_threshold_discharge_number(var))
