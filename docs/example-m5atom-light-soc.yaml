@@ -127,6 +127,9 @@ sensor:
     input_power:
       name: "Input Power"
       id: input_watts
+    ac_input_power:
+      name: "AC Input Power"
+      id: ac_input_watts
     output_power:
       name: "Output Power"
       id: output_watts
