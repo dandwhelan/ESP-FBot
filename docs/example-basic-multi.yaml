@@ -103,8 +103,14 @@ sensor:
     battery_s2_level:
       name: "B1 Battery S2"
       id: b1_battery_percent_s2
+    ac_input_power:
+      name: "B1 AC Input Power"
+      id: b1_ac_input_watts
+    dc_input_power:
+      name: "B1 DC Input Power"
+      id: b1_dc_input_watts
     input_power:
-      name: "B1 Input Power"
+      name: "B2 Total Input Power"
       id: b1_input_watts
     output_power:
       name: "B1 Output Power"
@@ -166,8 +172,14 @@ sensor:
     battery_s2_level:
       name: "B2 Battery S2"
       id: b2_battery_percent_s2
+    ac_input_power:
+      name: "B2 AC Input Power"
+      id: b2_ac_input_watts
+    dc_input_power:
+      name: "B2 DC Input Power"
+      id: b2_dc_input_watts
     input_power:
-      name: "B2 Input Power"
+      name: "B2 Total Input Power"
       id: b2_input_watts
     output_power:
       name: "B2 Output Power"

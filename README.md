@@ -129,12 +129,15 @@ sensor:
     battery_s2_level:
       name: "Battery S2"
       id: battery_percent_s2
-    input_power:
-      name: "Input Power"
-      id: input_watts
     ac_input_power:
       name: "AC Input Power"
       id: ac_input_watts
+    dc_input_power:
+      name: "DC Input Power"
+      id: dc_input_watts
+    input_power:
+      name: "Total Input Power"
+      id: input_watts
     output_power:
       name: "Output Power"
       id: output_watts
