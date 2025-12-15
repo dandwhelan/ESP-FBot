@@ -145,7 +145,7 @@ sensor:
       name: "System Power"
       id: system_watts
     total_power:
-      name: "Total Power"
+      name: "Total Output Power"
       id: total_watts
     remaining_time:
       name: "Remaining Minutes"
@@ -174,7 +174,7 @@ sensor:
     update_interval: 5s
   # Net power (positive = charging, negative = discharging)
   - platform: template
-    name: "Net Power"
+    name: "Net Charging Power"
     lambda: |-
       if (id(input_watts).has_state() && id(output_watts).has_state()) {
         return id(input_watts).state - id(output_watts).state;

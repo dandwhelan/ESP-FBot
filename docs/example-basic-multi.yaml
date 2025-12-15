@@ -119,7 +119,7 @@ sensor:
       name: "B1 System Power"
       id: b1_system_watts
     total_power:
-      name: "B1 Total Power"
+      name: "B1 Total Output Power"
       id: b1_total_watts
     remaining_time:
       name: "B1 Remaining Minutes"
@@ -148,7 +148,7 @@ sensor:
     update_interval: 5s
   # Net power (positive = charging, negative = discharging)
   - platform: template
-    name: "B1 Net Power"
+    name: "B1 Net Charging Power"
     lambda: |-
       if (id(b1_input_watts).has_state() && id(b1_output_watts).has_state()) {
         return id(b1_input_watts).state - id(b1_output_watts).state;
@@ -188,7 +188,7 @@ sensor:
       name: "B2 System Power"
       id: b2_system_watts
     total_power:
-      name: "B2 Total Power"
+      name: "B2 Total Output Power"
       id: b2_total_watts
     remaining_time:
       name: "B2 Remaining Minutes"
@@ -217,7 +217,7 @@ sensor:
     update_interval: 5s
   # Net power (positive = charging, negative = discharging)
   - platform: template
-    name: "B2 Net Power"
+    name: "B2 Net Charging Power"
     lambda: |-
       if (id(b2_input_watts).has_state() && id(b2_output_watts).has_state()) {
         return id(b2_input_watts).state - id(b2_output_watts).state;
