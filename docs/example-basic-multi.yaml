@@ -264,10 +264,10 @@ switch:
 number:
   - platform: fbot
     fbot_id: fbot_device_1
-    # Charge threshold: stop charging when battery reaches this level (60-100%)
+    # Charge threshold: stop charging when battery reaches this level (10-100%)
     threshold_charge:
       name: "B1 Charge Max"
-      min_value: 60
+      min_value: 10
       max_value: 100
       step: 1
     # Discharge threshold: stop discharging when battery reaches this level (0-50%)
@@ -278,10 +278,10 @@ number:
       step: 1
   - platform: fbot
     fbot_id: fbot_device_2
-    # Charge threshold: stop charging when battery reaches this level (60-100%)
+    # Charge threshold: stop charging when battery reaches this level (10-100%)
     threshold_charge:
       name: "B2 Charge Max"
-      min_value: 60
+      min_value: 10
       max_value: 100
       step: 1
     # Discharge threshold: stop discharging when battery reaches this level (0-50%)
