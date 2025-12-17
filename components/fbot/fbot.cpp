@@ -487,7 +487,14 @@ void Fbot::control_light(bool state) {
 }
 
 void Fbot::control_ac_silent(bool state) {
+  // AC Silent uses holding register 57 (settings register)
+  // Function code 0x06 (Write Single Register) writes to holding registers
   this->send_control_command(REG_AC_SILENT_CONTROL, state ? 1 : 0);
+  
+  // Request settings update to confirm the change
+  this->set_timeout(500, [this]() { 
+    this->send_settings_request(); 
+  });
 }
 
 void Fbot::set_threshold_charge(float percent) {

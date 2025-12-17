@@ -245,6 +245,9 @@ switch:
     light:
       name: "B1 Light"
       id: b1_light_switch
+    ac_silent:
+      name: "B1 AC Silent Charging"
+      id: b1_ac_silent_switch
   - platform: fbot
     fbot_id: fbot_device_2
     usb:
@@ -259,6 +262,9 @@ switch:
     light:
       name: "B2 Light"
       id: b2_light_switch
+    ac_silent:
+      name: "B2 AC Silent Charging"
+      id: b2_ac_silent_switch
 
 # Number controls for charge/discharge thresholds
 number:
