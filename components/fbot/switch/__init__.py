@@ -10,6 +10,7 @@ CONF_USB = "usb"
 CONF_DC = "dc"
 CONF_AC = "ac"
 CONF_LIGHT = "light"
+CONF_AC_SILENT = "ac_silent"
 
 FbotSwitch = fbot_ns.class_("FbotSwitch", switch.Switch, cg.Component)
 
@@ -18,6 +19,7 @@ SWITCH_TYPES = {
     CONF_DC: "dc",
     CONF_AC: "ac",
     CONF_LIGHT: "light",
+    CONF_AC_SILENT: "ac_silent",
 }
 
 CONFIG_SCHEMA = cv.Schema(
@@ -38,6 +40,10 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_LIGHT): switch.switch_schema(
             FbotSwitch,
             icon="mdi:lightbulb",
+        ),
+        cv.Optional(CONF_AC_SILENT): switch.switch_schema(
+            FbotSwitch,
+            icon="mdi:volume-off",
         ),
     }
 )
@@ -61,3 +67,5 @@ async def to_code(config):
                 cg.add(parent.set_ac_switch(var))
             elif key == CONF_LIGHT:
                 cg.add(parent.set_light_switch(var))
+            elif key == CONF_AC_SILENT:
+                cg.add(parent.set_ac_silent_switch(var))

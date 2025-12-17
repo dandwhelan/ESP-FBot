@@ -202,6 +202,9 @@ switch:
     light:
       name: "Light"
       id: light_switch
+    ac_silent:
+      name: "AC Silent Charging"
+      id: ac_silent_switch
 
 # Number controls for charge/discharge thresholds
 number:

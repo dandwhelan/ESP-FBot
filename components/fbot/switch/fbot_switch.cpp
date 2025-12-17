@@ -41,6 +41,8 @@ void FbotSwitch::write_state(bool state) {
     this->parent_->control_ac(state);
   } else if (this->switch_type_ == "light") {
     this->parent_->control_light(state);
+  } else if (this->switch_type_ == "ac_silent") {
+    this->parent_->control_ac_silent(state);
   } else {
     ESP_LOGW(TAG, "Unknown switch type: %s", this->switch_type_.c_str());
     return;

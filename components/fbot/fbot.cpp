@@ -427,6 +427,14 @@ void Fbot::parse_settings_notification(const uint8_t *data, uint16_t length) {
     ESP_LOGI(TAG, "First settings response received");
   }
   
+  // Parse AC Silent state (register 57: 0=off, 1=on)
+  bool ac_silent_state = this->get_register(data, length, REG_AC_SILENT_CONTROL) == 1;
+  
+  // Sync AC Silent switch state with device
+  if (this->ac_silent_switch_ != nullptr) {
+    this->ac_silent_switch_->publish_state(ac_silent_state);
+  }
+  
   // Parse threshold registers (66 and 67 from holding registers)
   // Values are in permille (divide by 10 for percentage)
   float threshold_discharge = this->get_register(data, length, REG_THRESHOLD_DISCHARGE) / 10.0f;
@@ -450,8 +458,8 @@ void Fbot::parse_settings_notification(const uint8_t *data, uint16_t length) {
   }
 #endif
   
-  ESP_LOGD(TAG, "Settings: Discharge threshold: %.1f%%, Charge threshold: %.1f%%", 
-           threshold_discharge, threshold_charge);
+  ESP_LOGD(TAG, "Settings: Discharge threshold: %.1f%%, Charge threshold: %.1f%%, AC Silent: %d", 
+           threshold_discharge, threshold_charge, ac_silent_state);
 }
 
 void Fbot::update_connected_state(bool state) {
@@ -476,6 +484,10 @@ void Fbot::control_ac(bool state) {
 
 void Fbot::control_light(bool state) {
   this->send_control_command(REG_LIGHT_CONTROL, state ? 1 : 0);
+}
+
+void Fbot::control_ac_silent(bool state) {
+  this->send_control_command(REG_AC_SILENT_CONTROL, state ? 1 : 0);
 }
 
 void Fbot::set_threshold_charge(float percent) {
