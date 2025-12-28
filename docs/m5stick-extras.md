@@ -2,7 +2,7 @@
 
 ![M5Atom Button Image](https://raw.githubusercontent.com/Ylianst/ESP-FBot/refs/heads/main/docs/images/m5stick-2.png)
 
-If you happen to be using a [M5StickC PLUS2 ESP32 Mini](https://shop.m5stack.com/products/m5stickc-plus2-esp32-mini-iot-development-kit) as your ESP32 device, here is a sample ESPHome configuration file that will display the battery state, net power input/output and what is active (AC, DC, USB, Light). I also made the device's speaker act as a remote buzzer in Home Assistant and you can also control the red LED of the device.
+If you happen to be using a [M5StickC PLUS2 ESP32 Mini](https://shop.m5stack.com/products/m5stickc-plus2-esp32-mini-iot-development-kit) as your ESP32 device, here is a sample ESPHome configuration file that will display the battery state, net power input/output and what is active (AC, DC, USB, Light). I also made the device's speaker act as a remote buzzer in Home Assistant and you can also control the red LED of the device. With this configuration, the M5StickC will also act as a bride for Home Assistant to read the power station's state over WIFI.
 
 ```yaml
 esphome:
