@@ -38,7 +38,6 @@ CONF_AC_OUT_VOLTAGE = "ac_out_voltage"
 CONF_AC_OUT_FREQUENCY = "ac_out_frequency"
 CONF_AC_IN_FREQUENCY = "ac_in_frequency"
 CONF_TIME_TO_FULL = "time_to_full"
-CONF_TIME_TO_EMPTY = "time_to_empty"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -143,12 +142,6 @@ CONFIG_SCHEMA = cv.Schema(
             device_class=DEVICE_CLASS_DURATION,
             state_class=STATE_CLASS_MEASUREMENT,
         ),
-        cv.Optional(CONF_TIME_TO_EMPTY): sensor.sensor_schema(
-            unit_of_measurement=UNIT_MINUTE,
-            accuracy_decimals=0,
-            device_class=DEVICE_CLASS_DURATION,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
     }
 )
 
@@ -222,7 +215,3 @@ async def to_code(config):
     if CONF_TIME_TO_FULL in config:
         sens = await sensor.new_sensor(config[CONF_TIME_TO_FULL])
         cg.add(parent.set_time_to_full_sensor(sens))
-
-    if CONF_TIME_TO_EMPTY in config:
-        sens = await sensor.new_sensor(config[CONF_TIME_TO_EMPTY])
-        cg.add(parent.set_time_to_empty_sensor(sens))

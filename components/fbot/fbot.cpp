@@ -69,7 +69,6 @@ void Fbot::dump_config() {
   LOG_SENSOR("  ", "AC Out Frequency", this->ac_out_frequency_sensor_);
   LOG_SENSOR("  ", "AC In Frequency", this->ac_in_frequency_sensor_);
   LOG_SENSOR("  ", "Time to Full", this->time_to_full_sensor_);
-  LOG_SENSOR("  ", "Time to Empty", this->time_to_empty_sensor_);
   LOG_BINARY_SENSOR("  ", "Connected", this->connected_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Battery S1 Connected", this->battery_connected_s1_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Battery S2 Connected", this->battery_connected_s2_binary_sensor_);
@@ -345,9 +344,7 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   float ac_out_frequency = this->get_register(data, length, 19) * 0.01f;
   float ac_in_frequency = this->get_register(data, length, 22) * 0.001f;
   uint16_t time_to_full = this->get_register(data, length, 58);
-  uint16_t time_to_empty = this->get_register(data, length, 59);
-  
-  uint16_t remaining_minutes = time_to_empty; // Keep backward compatibility
+  uint16_t remaining_minutes = this->get_register(data, length, 59);
   
   // Publish sensor values
   if (this->battery_percent_sensor_ != nullptr) {
@@ -394,9 +391,6 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   }
   if (this->time_to_full_sensor_ != nullptr) {
     this->time_to_full_sensor_->publish_state(time_to_full);
-  }
-  if (this->time_to_empty_sensor_ != nullptr) {
-    this->time_to_empty_sensor_->publish_state(time_to_empty);
   }
 
   // Update binary sensors for battery connection status
@@ -626,9 +620,6 @@ void Fbot::reset_sensors_to_unknown() {
   }
   if (this->time_to_full_sensor_ != nullptr) {
     this->time_to_full_sensor_->publish_state(NAN);
-  }
-  if (this->time_to_empty_sensor_ != nullptr) {
-    this->time_to_empty_sensor_->publish_state(NAN);
   }
   
   // Reset binary sensors for output states to unknown
