@@ -11,11 +11,11 @@ esp32:
 # Enable Home Assistant API
 api:
   encryption:
-    key: "8Pc3OyIRGeBfeD6jxIEWR3dtsQIq6aYCliGvWQqr56o="
+    key: "keygoeshere"
 
 ota:
   - platform: esphome
-    password: "fossibot123)"
+    password: "keygoeshere"
 
 # This assumed you put your WIFI SSID and passing in the secrets file
 wifi:
@@ -24,13 +24,13 @@ wifi:
 
 # Enable logging
 logger:
-  level: DEBUG
+  level: INFO
 
 # Load external component from local path
+
 external_components:
-  - source: 
-      type: local
-      path: components
+  - source: github://dandwhelan/esp-fbot
+    refresh: 10s
 
 # BLE Client configuration
 esp32_ble_tracker:
