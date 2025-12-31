@@ -11,11 +11,11 @@ esp32:
 # Enable Home Assistant API
 api:
   encryption:
-    key: "keygoeshere"
+    key: "keyhere"
 
 ota:
   - platform: esphome
-    password: "keygoeshere"
+    password: "keyhere"
 
 # This assumed you put your WIFI SSID and passing in the secrets file
 wifi:
@@ -24,13 +24,13 @@ wifi:
 
 # Enable logging
 logger:
-  level: INFO
+  level: debug
 
 # Load external component from local path
-
 external_components:
-  - source: github://dandwhelan/esp-fbot
-    refresh: 10s
+  - source: 
+      type: local
+      path: components
 
 # BLE Client configuration
 esp32_ble_tracker:
@@ -177,6 +177,19 @@ switch:
     ac_silent_charging:
       name: "AC Silent Charging"
       id: ac_silent_switch
+      entity_category: config
+    system_beeps:
+      name: "System Beeps"
+      id: system_beeps_switch
+      entity_category: config
+
+# Button for one-shot commands
+button:
+  - platform: fbot
+    fbot_id: my_fbot
+    power_off:
+      name: "Power Off"
+      entity_category: config
 
 # Number controls for charge/discharge thresholds
 number:
@@ -218,5 +231,38 @@ number:
       name: "Set USB Standby"
       entity_category: config
     start_charge_after:
-      name: "Set Start Charging After"
+      name: "Set Start Charging"
       entity_category: config
+
+# LED Indicator for Battery Level (SOC)
+output:
+  - platform: ledc
+    pin: GPIO32
+    id: led_output
+    # PWM frequency suitable for LEDs
+    frequency: 1000 Hz
+
+light:
+  - platform: monochromatic
+    output: led_output
+    name: "Battery Indicator LED"
+    id: batt_led
+    # Allow full brightness range
+    default_transition_length: 0.5s
+
+# Automation: Update LED brightness when battery level changes
+# Map 0-100% battery to 0-100% brightness
+interval:
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            sensor.in_range:
+              id: battery_percent
+              above: 0
+          then:
+            - light.turn_on:
+                id: batt_led
+                brightness: !lambda "return id(battery_percent).state / 100.0;"
+          else:
+            - light.turn_off: batt_led

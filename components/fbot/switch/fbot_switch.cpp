@@ -23,15 +23,16 @@ void FbotSwitch::write_state(bool state) {
     ESP_LOGW(TAG, "No parent set for switch");
     return;
   }
-  
+
   // Check if device is connected before allowing switch changes
   if (!this->parent_->is_connected()) {
-    ESP_LOGW(TAG, "Cannot change switch '%s': device is disconnected", this->switch_type_.c_str());
+    ESP_LOGW(TAG, "Cannot change switch '%s': device is disconnected",
+             this->switch_type_.c_str());
     // Immediately publish the current state (false) to reject the change
     this->publish_state(false);
     return;
   }
-  
+
   // Call the appropriate control method based on switch type
   if (this->switch_type_ == "usb") {
     this->parent_->control_usb(state);
@@ -43,17 +44,19 @@ void FbotSwitch::write_state(bool state) {
     this->parent_->control_light(state);
   } else if (this->switch_type_ == "ac_silent") {
     this->parent_->control_ac_silent(state);
+  } else if (this->switch_type_ == "system_beeps") {
+    this->parent_->control_system_beeps(state);
   } else {
     ESP_LOGW(TAG, "Unknown switch type: %s", this->switch_type_.c_str());
     return;
   }
-  
+
   // Publish the new state optimistically
   // The actual state will be confirmed when the next status update arrives
   this->publish_state(state);
 }
 
-}  // namespace fbot
-}  // namespace esphome
+} // namespace fbot
+} // namespace esphome
 
-#endif  // USE_ESP32
+#endif // USE_ESP32

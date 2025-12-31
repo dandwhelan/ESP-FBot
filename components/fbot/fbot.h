@@ -30,6 +30,7 @@ static const uint8_t REG_USB_CONTROL = 24;
 static const uint8_t REG_DC_CONTROL = 25;
 static const uint8_t REG_AC_CONTROL = 26;
 static const uint8_t REG_LIGHT_CONTROL = 27;
+static const uint8_t REG_BEEP_CONTROL = 56;
 static const uint8_t REG_AC_SILENT_CONTROL = 57;
 static const uint8_t REG_THRESHOLD_DISCHARGE = 66;
 static const uint8_t REG_THRESHOLD_CHARGE = 67;
@@ -38,6 +39,7 @@ static const uint8_t REG_AC_STANDBY = 60;
 static const uint8_t REG_DC_STANDBY = 61;
 static const uint8_t REG_USB_STANDBY = 62;
 static const uint8_t REG_START_CHARGE_AFTER = 63;
+static const uint8_t REG_POWER_OFF = 64;
 
 // State flag bit masks for register 41
 static const uint16_t STATE_USB_BIT = 512;    // bit 9
@@ -164,6 +166,9 @@ public:
   void set_ac_silent_switch(switch_::Switch *sw) {
     this->ac_silent_switch_ = sw;
   }
+  void set_system_beeps_switch(switch_::Switch *sw) {
+    this->system_beeps_switch_ = sw;
+  }
 
 #ifdef USE_NUMBER
   // Number setters
@@ -202,6 +207,7 @@ public:
   void control_ac(bool state);
   void control_light(bool state);
   void control_ac_silent(bool state);
+  void control_system_beeps(bool state);
 
   // Control methods for thresholds
   void set_threshold_charge(float percent);
@@ -211,6 +217,7 @@ public:
   void set_dc_standby(uint16_t minutes);
   void set_usb_standby(uint16_t seconds);
   void set_start_charge_after(uint16_t minutes);
+  void send_power_off();
 
   // Connection state getter
   bool is_connected() const { return connected_; }
@@ -278,6 +285,7 @@ protected:
   switch_::Switch *ac_switch_{nullptr};
   switch_::Switch *light_switch_{nullptr};
   switch_::Switch *ac_silent_switch_{nullptr};
+  switch_::Switch *system_beeps_switch_{nullptr};
 
 #ifdef USE_NUMBER
   // Numbers

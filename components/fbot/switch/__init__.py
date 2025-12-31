@@ -11,6 +11,7 @@ CONF_DC = "dc"
 CONF_AC = "ac"
 CONF_LIGHT = "light"
 CONF_AC_SILENT_CHARGING = "ac_silent_charging"
+CONF_SYSTEM_BEEPS = "system_beeps"
 
 FbotSwitch = fbot_ns.class_("FbotSwitch", switch.Switch, cg.Component)
 
@@ -20,6 +21,7 @@ SWITCH_TYPES = {
     CONF_AC: "ac",
     CONF_LIGHT: "light",
     CONF_AC_SILENT_CHARGING: "ac_silent",
+    CONF_SYSTEM_BEEPS: "system_beeps",
 }
 
 CONFIG_SCHEMA = cv.Schema(
@@ -45,6 +47,10 @@ CONFIG_SCHEMA = cv.Schema(
             FbotSwitch,
             icon="mdi:volume-off",
         ),
+        cv.Optional(CONF_SYSTEM_BEEPS): switch.switch_schema(
+            FbotSwitch,
+            icon="mdi:volume-high",
+        ),
     }
 )
 
@@ -69,3 +75,5 @@ async def to_code(config):
                 cg.add(parent.set_light_switch(var))
             elif key == CONF_AC_SILENT_CHARGING:
                 cg.add(parent.set_ac_silent_switch(var))
+            elif key == CONF_SYSTEM_BEEPS:
+                cg.add(parent.set_system_beeps_switch(var))

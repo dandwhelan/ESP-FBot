@@ -507,6 +507,12 @@ void Fbot::parse_settings_notification(const uint8_t *data, uint16_t length) {
     this->silent_charging_binary_sensor_->publish_state(ac_silent_state);
   }
 
+  // Parse System Beeps (Reg 56)
+  bool beep_state = this->get_register(data, length, REG_BEEP_CONTROL) == 1;
+  if (this->system_beeps_switch_ != nullptr) {
+    this->system_beeps_switch_->publish_state(beep_state);
+  }
+
   // Parse threshold registers (66 and 67 from holding registers)
   // Values are in permille (divide by 10 for percentage)
   float threshold_discharge =
@@ -631,6 +637,12 @@ void Fbot::control_ac_silent(bool state) {
   this->set_timeout(500, [this]() { this->send_settings_request(); });
 }
 
+void Fbot::control_system_beeps(bool state) {
+  // System Beeps uses holding register 56
+  this->send_control_command(REG_BEEP_CONTROL, state ? 1 : 0);
+  this->set_timeout(500, [this]() { this->send_settings_request(); });
+}
+
 void Fbot::set_threshold_charge(float percent) {
   // Convert percentage to permille (multiply by 10)
   uint16_t value = static_cast<uint16_t>(percent * 10);
@@ -673,6 +685,11 @@ void Fbot::set_usb_standby(uint16_t seconds) {
 
 void Fbot::set_start_charge_after(uint16_t minutes) {
   this->send_control_command(REG_START_CHARGE_AFTER, minutes);
+}
+
+void Fbot::send_power_off() {
+  ESP_LOGI(TAG, "Sending Power Off command");
+  this->send_control_command(REG_POWER_OFF, 1);
 }
 
 void Fbot::check_poll_timeout() {
