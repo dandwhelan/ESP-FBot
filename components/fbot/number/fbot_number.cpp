@@ -26,7 +26,8 @@ void FbotNumber::control(float value) {
 
   // Check if device is connected before allowing changes
   if (!this->parent_->is_connected()) {
-    ESP_LOGW(TAG, "Cannot change number '%s': device is disconnected", this->number_type_.c_str());
+    ESP_LOGW(TAG, "Cannot change number '%s': device is disconnected",
+             this->number_type_.c_str());
     return;
   }
 
@@ -35,6 +36,21 @@ void FbotNumber::control(float value) {
     this->parent_->set_threshold_charge(value);
   } else if (this->number_type_ == "threshold_discharge") {
     this->parent_->set_threshold_discharge(value);
+  } else if (this->number_type_ == "polling_interval") {
+    this->parent_->set_polling_interval(static_cast<uint32_t>(value * 1000));
+  } else if (this->number_type_ == "settings_polling_interval") {
+    this->parent_->set_settings_polling_interval(
+        static_cast<uint32_t>(value * 1000));
+  } else if (this->number_type_ == "screen_timeout") {
+    this->parent_->set_screen_timeout(static_cast<uint16_t>(value));
+  } else if (this->number_type_ == "ac_standby") {
+    this->parent_->set_ac_standby(static_cast<uint16_t>(value));
+  } else if (this->number_type_ == "dc_standby") {
+    this->parent_->set_dc_standby(static_cast<uint16_t>(value));
+  } else if (this->number_type_ == "usb_standby") {
+    this->parent_->set_usb_standby(static_cast<uint16_t>(value));
+  } else if (this->number_type_ == "start_charge_after") {
+    this->parent_->set_start_charge_after(static_cast<uint16_t>(value));
   } else {
     ESP_LOGW(TAG, "Unknown number type: %s", this->number_type_.c_str());
     return;
@@ -45,7 +61,7 @@ void FbotNumber::control(float value) {
   this->publish_state(value);
 }
 
-}  // namespace fbot
-}  // namespace esphome
+} // namespace fbot
+} // namespace esphome
 
-#endif  // USE_ESP32
+#endif // USE_ESP32

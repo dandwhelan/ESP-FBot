@@ -1,6 +1,6 @@
 #include "fbot.h"
-#include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
+#include "esphome/core/log.h"
 
 #ifdef USE_ESP32
 
@@ -19,7 +19,7 @@ void Fbot::setup() {
   this->consecutive_poll_failures_ = 0;
   this->last_successful_poll_ = 0;
   this->last_settings_request_time_ = 0;
-  
+
   // Initialize connected sensor to disconnected state
   if (this->connected_binary_sensor_ != nullptr) {
     this->connected_binary_sensor_->publish_state(false);
@@ -30,18 +30,19 @@ void Fbot::loop() {
   // Poll for data if connected
   if (this->connected_ && this->characteristics_discovered_) {
     uint32_t now = millis();
-    
+
     // Check for poll timeout
     this->check_poll_timeout();
-    
+
     // Send regular status request
     if (now - this->last_poll_time_ >= this->polling_interval_) {
       this->send_read_request();
       this->last_poll_time_ = now;
     }
-    
+
     // Send settings request periodically
-    if (now - this->last_settings_request_time_ >= this->settings_polling_interval_) {
+    if (now - this->last_settings_request_time_ >=
+        this->settings_polling_interval_) {
       this->send_settings_request();
       this->last_settings_request_time_ = now;
     }
@@ -51,7 +52,8 @@ void Fbot::loop() {
 void Fbot::dump_config() {
   ESP_LOGCONFIG(TAG, "Fbot Battery:");
   ESP_LOGCONFIG(TAG, "  Polling interval: %ums", this->polling_interval_);
-  ESP_LOGCONFIG(TAG, "  Settings polling interval: %ums", this->settings_polling_interval_);
+  ESP_LOGCONFIG(TAG, "  Settings polling interval: %ums",
+                this->settings_polling_interval_);
   LOG_SENSOR("  ", "Battery Percent", this->battery_percent_sensor_);
   LOG_SENSOR("  ", "Battery S1 Percent", this->battery_percent_s1_sensor_);
   LOG_SENSOR("  ", "Battery S2 Percent", this->battery_percent_s2_sensor_);
@@ -62,7 +64,29 @@ void Fbot::dump_config() {
   LOG_SENSOR("  ", "System Power", this->system_power_sensor_);
   LOG_SENSOR("  ", "Total Power", this->total_power_sensor_);
   LOG_SENSOR("  ", "Remaining Time", this->remaining_time_sensor_);
-  LOG_SENSOR("  ", "Charge Threshold", this->threshold_charge_sensor_);
+
+#ifdef USE_NUMBER
+  LOG_NUMBER("  ", "Charge Threshold", this->threshold_charge_number_);
+  LOG_NUMBER("  ", "Discharge Threshold", this->threshold_discharge_number_);
+  LOG_NUMBER("  ", "Polling Interval", this->polling_interval_number_);
+  LOG_NUMBER("  ", "Settings Polling Interval",
+             this->settings_polling_interval_number_);
+  LOG_NUMBER("  ", "Screen Timeout", this->screen_timeout_number_);
+  LOG_NUMBER("  ", "AC Standby", this->ac_standby_number_);
+  LOG_NUMBER("  ", "DC Standby", this->dc_standby_number_);
+  LOG_NUMBER("  ", "USB Standby", this->usb_standby_number_);
+  LOG_NUMBER("  ", "Start Charge After", this->start_charge_after_number_);
+#endif
+
+  LOG_SENSOR("  ", "Charge Threshold (Sensor)", this->threshold_charge_sensor_);
+  LOG_SENSOR("  ", "Discharge Threshold", this->threshold_discharge_sensor_);
+  LOG_SENSOR("  ", "Time to Full", this->time_to_full_sensor_);
+  LOG_SENSOR("  ", "Screen Timeout (Sensor)", this->screen_timeout_sensor_);
+  LOG_SENSOR("  ", "AC Standby (Sensor)", this->ac_standby_sensor_);
+  LOG_SENSOR("  ", "DC Standby (Sensor)", this->dc_standby_sensor_);
+  LOG_SENSOR("  ", "USB Standby (Sensor)", this->usb_standby_sensor_);
+  LOG_SENSOR("  ", "Start Charge After (Sensor)",
+             this->start_charge_after_sensor_);
   LOG_SENSOR("  ", "Discharge Threshold", this->threshold_discharge_sensor_);
   LOG_SENSOR("  ", "Charge Level", this->charge_level_sensor_);
   LOG_SENSOR("  ", "AC Out Voltage", this->ac_out_voltage_sensor_);
@@ -70,102 +94,107 @@ void Fbot::dump_config() {
   LOG_SENSOR("  ", "AC In Frequency", this->ac_in_frequency_sensor_);
   LOG_SENSOR("  ", "Time to Full", this->time_to_full_sensor_);
   LOG_BINARY_SENSOR("  ", "Connected", this->connected_binary_sensor_);
-  LOG_BINARY_SENSOR("  ", "Battery S1 Connected", this->battery_connected_s1_binary_sensor_);
-  LOG_BINARY_SENSOR("  ", "Battery S2 Connected", this->battery_connected_s2_binary_sensor_);
+  LOG_BINARY_SENSOR("  ", "Battery S1 Connected",
+                    this->battery_connected_s1_binary_sensor_);
+  LOG_BINARY_SENSOR("  ", "Battery S2 Connected",
+                    this->battery_connected_s2_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "USB Active", this->usb_active_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "DC Active", this->dc_active_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "AC Active", this->ac_active_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Light Active", this->light_active_binary_sensor_);
 }
 
-void Fbot::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
-                                   esp_ble_gattc_cb_param_t *param) {
+void Fbot::gattc_event_handler(esp_gattc_cb_event_t event,
+                               esp_gatt_if_t gattc_if,
+                               esp_ble_gattc_cb_param_t *param) {
   switch (event) {
-    case ESP_GATTC_OPEN_EVT: {
-      if (param->open.status == ESP_GATT_OK) {
-        ESP_LOGI(TAG, "Connected to Fbot");
-        this->connected_ = true;
-        this->consecutive_poll_failures_ = 0;
-        this->last_successful_poll_ = 0;
-        this->update_connected_state(true);
-      } else {
-        ESP_LOGW(TAG, "Connection failed, status=%d", param->open.status);
-        this->update_connected_state(false);
-      }
-      break;
-    }
-    
-    case ESP_GATTC_DISCONNECT_EVT: {
-      ESP_LOGW(TAG, "Disconnected from Fbot");
-      this->connected_ = false;
-      this->characteristics_discovered_ = false;
+  case ESP_GATTC_OPEN_EVT: {
+    if (param->open.status == ESP_GATT_OK) {
+      ESP_LOGI(TAG, "Connected to Fbot");
+      this->connected_ = true;
+      this->consecutive_poll_failures_ = 0;
+      this->last_successful_poll_ = 0;
+      this->update_connected_state(true);
+    } else {
+      ESP_LOGW(TAG, "Connection failed, status=%d", param->open.status);
       this->update_connected_state(false);
+    }
+    break;
+  }
+
+  case ESP_GATTC_DISCONNECT_EVT: {
+    ESP_LOGW(TAG, "Disconnected from Fbot");
+    this->connected_ = false;
+    this->characteristics_discovered_ = false;
+    this->update_connected_state(false);
+    break;
+  }
+
+  case ESP_GATTC_SEARCH_CMPL_EVT: {
+    ESP_LOGD(TAG, "Service search complete");
+
+    // Get write characteristic
+    auto *write_chr = this->parent()->get_characteristic(
+        esp32_ble_tracker::ESPBTUUID::from_raw(SERVICE_UUID),
+        esp32_ble_tracker::ESPBTUUID::from_raw(WRITE_CHAR_UUID));
+    if (write_chr == nullptr) {
+      ESP_LOGW(TAG, "Write characteristic not found");
       break;
     }
-    
-    case ESP_GATTC_SEARCH_CMPL_EVT: {
-      ESP_LOGD(TAG, "Service search complete");
-      
-      // Get write characteristic
-      auto *write_chr = this->parent()->get_characteristic(
-          esp32_ble_tracker::ESPBTUUID::from_raw(SERVICE_UUID),
-          esp32_ble_tracker::ESPBTUUID::from_raw(WRITE_CHAR_UUID));
-      if (write_chr == nullptr) {
-        ESP_LOGW(TAG, "Write characteristic not found");
-        break;
-      }
-      this->write_handle_ = write_chr->handle;
-      ESP_LOGD(TAG, "Write characteristic handle: 0x%04x", this->write_handle_);
-      
-      // Get notify characteristic
-      auto *notify_chr = this->parent()->get_characteristic(
-          esp32_ble_tracker::ESPBTUUID::from_raw(SERVICE_UUID),
-          esp32_ble_tracker::ESPBTUUID::from_raw(NOTIFY_CHAR_UUID));
-      if (notify_chr == nullptr) {
-        ESP_LOGW(TAG, "Notify characteristic not found");
-        break;
-      }
-      this->notify_handle_ = notify_chr->handle;
-      ESP_LOGD(TAG, "Notify characteristic handle: 0x%04x", this->notify_handle_);
-      
-      // Register for notifications
-      auto status = esp_ble_gattc_register_for_notify(gattc_if, this->parent()->get_remote_bda(),
-                                                       this->notify_handle_);
-      if (status) {
-        ESP_LOGW(TAG, "esp_ble_gattc_register_for_notify failed, status=%d", status);
-      } else {
-        ESP_LOGD(TAG, "Registered for notifications");
-      }
-      
-      this->characteristics_discovered_ = true;
-      this->node_state = esp32_ble_tracker::ClientState::ESTABLISHED;
+    this->write_handle_ = write_chr->handle;
+    ESP_LOGD(TAG, "Write characteristic handle: 0x%04x", this->write_handle_);
+
+    // Get notify characteristic
+    auto *notify_chr = this->parent()->get_characteristic(
+        esp32_ble_tracker::ESPBTUUID::from_raw(SERVICE_UUID),
+        esp32_ble_tracker::ESPBTUUID::from_raw(NOTIFY_CHAR_UUID));
+    if (notify_chr == nullptr) {
+      ESP_LOGW(TAG, "Notify characteristic not found");
       break;
     }
-    
-    case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
-      if (param->reg_for_notify.status == ESP_GATT_OK) {
-        ESP_LOGD(TAG, "Notification registration successful");
-        // Start polling - request both status and settings on initial connection
-        uint32_t now = millis();
-        this->last_poll_time_ = now;
-        this->last_settings_request_time_ = now;
-        this->send_read_request();
-        // Request settings shortly after first status request
-        this->set_timeout(500, [this]() { this->send_settings_request(); });
-      }
-      break;
+    this->notify_handle_ = notify_chr->handle;
+    ESP_LOGD(TAG, "Notify characteristic handle: 0x%04x", this->notify_handle_);
+
+    // Register for notifications
+    auto status = esp_ble_gattc_register_for_notify(
+        gattc_if, this->parent()->get_remote_bda(), this->notify_handle_);
+    if (status) {
+      ESP_LOGW(TAG, "esp_ble_gattc_register_for_notify failed, status=%d",
+               status);
+    } else {
+      ESP_LOGD(TAG, "Registered for notifications");
     }
-    
-    case ESP_GATTC_NOTIFY_EVT: {
-      if (param->notify.handle == this->notify_handle_) {
-        ESP_LOGVV(TAG, "Received notification, length=%d", param->notify.value_len);
-        this->parse_notification(param->notify.value, param->notify.value_len);
-      }
-      break;
+
+    this->characteristics_discovered_ = true;
+    this->node_state = esp32_ble_tracker::ClientState::ESTABLISHED;
+    break;
+  }
+
+  case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
+    if (param->reg_for_notify.status == ESP_GATT_OK) {
+      ESP_LOGD(TAG, "Notification registration successful");
+      // Start polling - request both status and settings on initial connection
+      uint32_t now = millis();
+      this->last_poll_time_ = now;
+      this->last_settings_request_time_ = now;
+      this->send_read_request();
+      // Request settings shortly after first status request
+      this->set_timeout(500, [this]() { this->send_settings_request(); });
     }
-    
-    default:
-      break;
+    break;
+  }
+
+  case ESP_GATTC_NOTIFY_EVT: {
+    if (param->notify.handle == this->notify_handle_) {
+      ESP_LOGVV(TAG, "Received notification, length=%d",
+                param->notify.value_len);
+      this->parse_notification(param->notify.value, param->notify.value_len);
+    }
+    break;
+  }
+
+  default:
+    break;
   }
 }
 
@@ -176,7 +205,7 @@ uint16_t Fbot::calculate_checksum(const uint8_t *data, size_t len) {
     crc ^= data[i];
     for (int j = 0; j < 8; j++) {
       if (crc & 1) {
-        crc = (crc >> 1) ^ 0xA001;  // 40961 decimal = 0xA001
+        crc = (crc >> 1) ^ 0xA001; // 40961 decimal = 0xA001
       } else {
         crc >>= 1;
       }
@@ -185,15 +214,16 @@ uint16_t Fbot::calculate_checksum(const uint8_t *data, size_t len) {
   return crc;
 }
 
-void Fbot::generate_command_bytes(uint8_t address, uint16_t reg, uint16_t value, uint8_t *output) {
+void Fbot::generate_command_bytes(uint8_t address, uint16_t reg, uint16_t value,
+                                  uint8_t *output) {
   // Build payload: [address, 6, reg_high, reg_low, value_high, value_low]
   output[0] = address;
-  output[1] = 0x06;  // Function code for write
+  output[1] = 0x06; // Function code for write
   output[2] = (reg >> 8) & 0xFF;
   output[3] = reg & 0xFF;
   output[4] = (value >> 8) & 0xFF;
   output[5] = value & 0xFF;
-  
+
   // Calculate and append checksum
   uint16_t crc = this->calculate_checksum(output, 6);
   output[6] = (crc >> 8) & 0xFF;
@@ -204,7 +234,7 @@ void Fbot::send_read_request() {
   if (!this->connected_ || !this->characteristics_discovered_) {
     return;
   }
-  
+
   // Read 80 registers starting from 0: [0x11, 0x04, 0x00, 0x00, 0x00, 0x50]
   uint8_t payload[6] = {0x11, 0x04, 0x00, 0x00, 0x00, 0x50};
   uint16_t crc = this->calculate_checksum(payload, 6);
@@ -212,14 +242,15 @@ void Fbot::send_read_request() {
   memcpy(command, payload, 6);
   command[6] = (crc >> 8) & 0xFF;
   command[7] = crc & 0xFF;
-  
-  auto status = esp_ble_gattc_write_char(this->parent()->get_gattc_if(), this->parent()->get_conn_id(),
-                                         this->write_handle_, sizeof(command), command,
-                                         ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+
+  auto status = esp_ble_gattc_write_char(
+      this->parent()->get_gattc_if(), this->parent()->get_conn_id(),
+      this->write_handle_, sizeof(command), command, ESP_GATT_WRITE_TYPE_NO_RSP,
+      ESP_GATT_AUTH_REQ_NONE);
   if (status) {
     ESP_LOGW(TAG, "Error sending read request, status=%d", status);
   } else {
-    ESP_LOGVV(TAG, "Sent read request");
+    ESP_LOGD(TAG, "Sent read request");
   }
 }
 
@@ -227,19 +258,20 @@ void Fbot::send_settings_request() {
   if (!this->connected_ || !this->characteristics_discovered_) {
     return;
   }
-  
-  // Read 80 holding registers starting from 0: [0x11, 0x03, 0x00, 0x00, 0x00, 0x50]
-  // Function code 0x03 = Read Holding Registers (settings)
+
+  // Read 80 holding registers starting from 0: [0x11, 0x03, 0x00, 0x00, 0x00,
+  // 0x50] Function code 0x03 = Read Holding Registers (settings)
   uint8_t payload[6] = {0x11, 0x03, 0x00, 0x00, 0x00, 0x50};
   uint16_t crc = this->calculate_checksum(payload, 6);
   uint8_t command[8];
   memcpy(command, payload, 6);
   command[6] = (crc >> 8) & 0xFF;
   command[7] = crc & 0xFF;
-  
-  auto status = esp_ble_gattc_write_char(this->parent()->get_gattc_if(), this->parent()->get_conn_id(),
-                                         this->write_handle_, sizeof(command), command,
-                                         ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+
+  auto status = esp_ble_gattc_write_char(
+      this->parent()->get_gattc_if(), this->parent()->get_conn_id(),
+      this->write_handle_, sizeof(command), command, ESP_GATT_WRITE_TYPE_NO_RSP,
+      ESP_GATT_AUTH_REQ_NONE);
   if (status) {
     ESP_LOGW(TAG, "Error sending settings request, status=%d", status);
   } else {
@@ -252,23 +284,26 @@ void Fbot::send_control_command(uint16_t reg, uint16_t value) {
     ESP_LOGW(TAG, "Cannot send command: not connected");
     return;
   }
-  
+
   uint8_t command[8];
   this->generate_command_bytes(0x11, reg, value, command);
-  
-  auto status = esp_ble_gattc_write_char(this->parent()->get_gattc_if(), this->parent()->get_conn_id(),
-                                         this->write_handle_, sizeof(command), command,
-                                         ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+
+  auto status = esp_ble_gattc_write_char(
+      this->parent()->get_gattc_if(), this->parent()->get_conn_id(),
+      this->write_handle_, sizeof(command), command, ESP_GATT_WRITE_TYPE_NO_RSP,
+      ESP_GATT_AUTH_REQ_NONE);
   if (status) {
     ESP_LOGW(TAG, "Error sending control command, status=%d", status);
   } else {
     ESP_LOGI(TAG, "Sent control command: reg=%d, value=%d", reg, value);
-    // Request update after full polling interval (2000ms) to allow inverter to stabilize
+    // Request update after full polling interval (2000ms) to allow inverter to
+    // stabilize
     this->last_poll_time_ = millis();
   }
 }
 
-uint16_t Fbot::get_register(const uint8_t *data, uint16_t length, uint16_t reg_index) {
+uint16_t Fbot::get_register(const uint8_t *data, uint16_t length,
+                            uint16_t reg_index) {
   // Registers start at byte offset 6, each register is 2 bytes (big-endian)
   uint16_t offset = 6 + (reg_index * 2);
   if (offset + 1 >= length) {
@@ -283,17 +318,17 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
     ESP_LOGW(TAG, "Notification too short: %d bytes", length);
     return;
   }
-  
+
   // ANY valid notification means device is responding - reset failure counter
   this->consecutive_poll_failures_ = 0;
   this->last_successful_poll_ = millis();
-  
+
   // Check header byte to determine notification type
   if (data[0] != 0x11) {
     ESP_LOGVV(TAG, "Invalid header byte: 0x%02x", data[0]);
     return;
   }
-  
+
   // Route based on function code
   if (data[1] == 0x03) {
     // 0x03 = Read Holding Registers response (settings)
@@ -306,24 +341,28 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
     ESP_LOGVV(TAG, "Unknown function code: 0x%02x", data[1]);
     return;
   }
-  
+
   // Parse key registers
   float battery_percent = this->get_register(data, length, 56) / 10.0f;
-  // Extra batteries (S1 / S2) ranges are 1 to 101, 0 means disconnected. Adding -1 to get proper range.
-  float battery_percent_s1 = this->get_register(data, length, 53) / 10.0f - 1.0f;
-  float battery_percent_s2 = this->get_register(data, length, 55) / 10.0f - 1.0f;
-  
+  // Extra batteries (S1 / S2) ranges are 1 to 101, 0 means disconnected. Adding
+  // -1 to get proper range.
+  float battery_percent_s1 =
+      this->get_register(data, length, 53) / 10.0f - 1.0f;
+  float battery_percent_s2 =
+      this->get_register(data, length, 55) / 10.0f - 1.0f;
+
   // Charge level: register 2, values 1-5 map to 300W-1100W (increment by 200W)
   uint16_t charge_level_raw = this->get_register(data, length, 2);
   uint16_t charge_level_watts = 0;
   if (charge_level_raw >= 1 && charge_level_raw <= 5) {
     charge_level_watts = 300 + ((charge_level_raw - 1) * 200);
   }
-  
-  // Determine if extra batteries are connected (raw value of 0 means disconnected)
+
+  // Determine if extra batteries are connected (raw value of 0 means
+  // disconnected)
   bool battery_s1_connected = this->get_register(data, length, 53) > 0;
   bool battery_s2_connected = this->get_register(data, length, 55) > 0;
-  
+
   // Set to NAN if battery percentages are outside valid range (0-100)
   if (battery_percent_s1 < 0.0f || battery_percent_s1 > 100.0f) {
     battery_percent_s1 = NAN;
@@ -338,14 +377,14 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   uint16_t system_watts = this->get_register(data, length, 21);
   uint16_t output_watts = this->get_register(data, length, 39);
   uint16_t state_flags = this->get_register(data, length, 41);
-  
+
   // New sensors
   float ac_out_voltage = this->get_register(data, length, 18) * 0.1f;
   float ac_out_frequency = this->get_register(data, length, 19) * 0.1f;
   float ac_in_frequency = this->get_register(data, length, 22) * 0.01f;
   uint16_t time_to_full = this->get_register(data, length, 58);
   uint16_t remaining_minutes = this->get_register(data, length, 59);
-  
+
   // Publish sensor values
   if (this->battery_percent_sensor_ != nullptr) {
     this->battery_percent_sensor_->publish_state(battery_percent);
@@ -355,7 +394,7 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   }
   if (this->battery_percent_s2_sensor_ != nullptr) {
     this->battery_percent_s2_sensor_->publish_state(battery_percent_s2);
-  }  
+  }
   if (this->ac_input_power_sensor_ != nullptr) {
     this->ac_input_power_sensor_->publish_state(ac_input_watts);
   }
@@ -395,18 +434,20 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
 
   // Update binary sensors for battery connection status
   if (this->battery_connected_s1_binary_sensor_ != nullptr) {
-    this->battery_connected_s1_binary_sensor_->publish_state(battery_s1_connected);
+    this->battery_connected_s1_binary_sensor_->publish_state(
+        battery_s1_connected);
   }
   if (this->battery_connected_s2_binary_sensor_ != nullptr) {
-    this->battery_connected_s2_binary_sensor_->publish_state(battery_s2_connected);
+    this->battery_connected_s2_binary_sensor_->publish_state(
+        battery_s2_connected);
   }
-  
+
   // Update binary sensors for output states
   bool usb_state = (state_flags & STATE_USB_BIT) != 0;
   bool dc_state = (state_flags & STATE_DC_BIT) != 0;
   bool ac_state = (state_flags & STATE_AC_BIT) != 0;
   bool light_state = (state_flags & STATE_LIGHT_BIT) != 0;
-  
+
   if (this->usb_active_binary_sensor_ != nullptr) {
     this->usb_active_binary_sensor_->publish_state(usb_state);
   }
@@ -419,7 +460,7 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   if (this->light_active_binary_sensor_ != nullptr) {
     this->light_active_binary_sensor_->publish_state(light_state);
   }
-  
+
   // Sync switch states with device state
   if (this->usb_switch_ != nullptr) {
     this->usb_switch_->publish_state(usb_state);
@@ -433,35 +474,46 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   if (this->light_switch_ != nullptr) {
     this->light_switch_->publish_state(light_state);
   }
-  
-  ESP_LOGD(TAG, "Battery: %.1f%% S1:%.1f%%(con:%d) S2:%.1f%%(con:%d), Input: %dW, Output: %dW, USB: %d, DC: %d, AC: %d", 
-           battery_percent, battery_percent_s1, battery_s1_connected, battery_percent_s2, battery_s2_connected, 
-           input_watts, output_watts, usb_state, dc_state, ac_state);
+
+  ESP_LOGD(TAG,
+           "Battery: %.1f%% S1:%.1f%%(con:%d) S2:%.1f%%(con:%d), Input: %dW, "
+           "Output: %dW, USB: %d, DC: %d, AC: %d",
+           battery_percent, battery_percent_s1, battery_s1_connected,
+           battery_percent_s2, battery_s2_connected, input_watts, output_watts,
+           usb_state, dc_state, ac_state);
 }
 
 void Fbot::parse_settings_notification(const uint8_t *data, uint16_t length) {
   // Parse holding registers (settings) from 0x1103 response
   ESP_LOGD(TAG, "Received settings notification");
-  
+
   // Mark that we've received settings at least once
   if (!this->settings_received_) {
     this->settings_received_ = true;
     ESP_LOGI(TAG, "First settings response received");
   }
-  
+
   // Parse AC Silent state (register 57: 0=off, 1=on)
-  bool ac_silent_state = this->get_register(data, length, REG_AC_SILENT_CONTROL) == 1;
-  
+  bool ac_silent_state =
+      this->get_register(data, length, REG_AC_SILENT_CONTROL) == 1;
+
   // Sync AC Silent switch state with device
   if (this->ac_silent_switch_ != nullptr) {
     this->ac_silent_switch_->publish_state(ac_silent_state);
   }
-  
+
+  // Sync Silent Charging binary sensor
+  if (this->silent_charging_binary_sensor_ != nullptr) {
+    this->silent_charging_binary_sensor_->publish_state(ac_silent_state);
+  }
+
   // Parse threshold registers (66 and 67 from holding registers)
   // Values are in permille (divide by 10 for percentage)
-  float threshold_discharge = this->get_register(data, length, REG_THRESHOLD_DISCHARGE) / 10.0f;
-  float threshold_charge = this->get_register(data, length, REG_THRESHOLD_CHARGE) / 10.0f;
-  
+  float threshold_discharge =
+      this->get_register(data, length, REG_THRESHOLD_DISCHARGE) / 10.0f;
+  float threshold_charge =
+      this->get_register(data, length, REG_THRESHOLD_CHARGE) / 10.0f;
+
   // Publish threshold sensor values (read-only display)
   if (this->threshold_discharge_sensor_ != nullptr) {
     this->threshold_discharge_sensor_->publish_state(threshold_discharge);
@@ -469,7 +521,7 @@ void Fbot::parse_settings_notification(const uint8_t *data, uint16_t length) {
   if (this->threshold_charge_sensor_ != nullptr) {
     this->threshold_charge_sensor_->publish_state(threshold_charge);
   }
-  
+
 #ifdef USE_NUMBER
   // Publish threshold number values (user-adjustable controls)
   if (this->threshold_discharge_number_ != nullptr) {
@@ -478,10 +530,72 @@ void Fbot::parse_settings_notification(const uint8_t *data, uint16_t length) {
   if (this->threshold_charge_number_ != nullptr) {
     this->threshold_charge_number_->publish_state(threshold_charge);
   }
+
+  // Parse and update new settings
+  // Register 59: Screen Timeout (minutes)
+  float screen_timeout = this->get_register(data, length, REG_SCREEN_TIMEOUT);
+  if (this->screen_timeout_number_ != nullptr) {
+    this->screen_timeout_number_->publish_state(screen_timeout);
+  }
+
+  // Register 60: AC Standby (minutes)
+  float ac_standby = this->get_register(data, length, REG_AC_STANDBY);
+  if (this->ac_standby_number_ != nullptr) {
+    this->ac_standby_number_->publish_state(ac_standby);
+  }
+
+  // Register 61: DC Standby (minutes)
+  float dc_standby = this->get_register(data, length, REG_DC_STANDBY);
+  if (this->dc_standby_number_ != nullptr) {
+    this->dc_standby_number_->publish_state(dc_standby);
+  }
+
+  // Register 62: USB Standby (seconds)
+  float usb_standby = this->get_register(data, length, REG_USB_STANDBY);
+  if (this->usb_standby_number_ != nullptr) {
+    this->usb_standby_number_->publish_state(usb_standby);
+  }
+
+  // Register 63: Start Charge After (minutes)
+  float start_charge = this->get_register(data, length, REG_START_CHARGE_AFTER);
+  if (this->start_charge_after_number_ != nullptr) {
+    this->start_charge_after_number_->publish_state(start_charge);
+  }
+
+  // Update read-only sensors
+  if (this->screen_timeout_sensor_ != nullptr) {
+    this->screen_timeout_sensor_->publish_state(screen_timeout);
+  }
+  if (this->ac_standby_sensor_ != nullptr) {
+    this->ac_standby_sensor_->publish_state(ac_standby);
+  }
+  if (this->dc_standby_sensor_ != nullptr) {
+    this->dc_standby_sensor_->publish_state(dc_standby);
+  }
+  if (this->usb_standby_sensor_ != nullptr) {
+    this->usb_standby_sensor_->publish_state(usb_standby);
+  }
+  if (this->start_charge_after_sensor_ != nullptr) {
+    this->start_charge_after_sensor_->publish_state(start_charge);
+  }
+
+  // Update polling intervals if numbers are set (these are local settings, but
+  // good to sync)
+  if (this->polling_interval_number_ != nullptr) {
+    this->polling_interval_number_->publish_state(this->polling_interval_ /
+                                                  1000.0f);
+  }
+  if (this->settings_polling_interval_number_ != nullptr) {
+    this->settings_polling_interval_number_->publish_state(
+        this->settings_polling_interval_ / 1000.0f);
+  }
 #endif
-  
-  ESP_LOGD(TAG, "Settings: Discharge threshold: %.1f%%, Charge threshold: %.1f%%, AC Silent: %d", 
-           threshold_discharge, threshold_charge, ac_silent_state);
+
+  ESP_LOGD(TAG,
+           "Settings: Discharge: %.1f%%, Charge: %.1f%%, Silent: %d, Screen: "
+           "%.0fm, AC: %.0fm, DC: %.0fm, USB: %.0fs, Start: %.0fm",
+           threshold_discharge, threshold_charge, ac_silent_state,
+           screen_timeout, ac_standby, dc_standby, usb_standby, start_charge);
 }
 
 void Fbot::update_connected_state(bool state) {
@@ -512,27 +626,53 @@ void Fbot::control_ac_silent(bool state) {
   // AC Silent uses holding register 57 (settings register)
   // Function code 0x06 (Write Single Register) writes to holding registers
   this->send_control_command(REG_AC_SILENT_CONTROL, state ? 1 : 0);
-  
+
   // Request settings update to confirm the change
-  this->set_timeout(500, [this]() { 
-    this->send_settings_request(); 
-  });
+  this->set_timeout(500, [this]() { this->send_settings_request(); });
 }
 
 void Fbot::set_threshold_charge(float percent) {
   // Convert percentage to permille (multiply by 10)
   uint16_t value = static_cast<uint16_t>(percent * 10);
-  if (value < 100) { value = 100; }  // Minimum 100
-  if (value > 1000) { value = 1000; }  // Maximum 1000
+  if (value < 100) {
+    value = 100;
+  } // Minimum 100
+  if (value > 1000) {
+    value = 1000;
+  } // Maximum 1000
   this->send_control_command(REG_THRESHOLD_CHARGE, value);
 }
 
 void Fbot::set_threshold_discharge(float percent) {
   // Convert percentage to permille (multiply by 10)
   uint16_t value = static_cast<uint16_t>(percent * 10);
-  if (value < 0) { value = 0; }  // Minimum 0
-  if (value > 500) { value = 500; }  // Maximum 500
+  if (value < 0) {
+    value = 0;
+  } // Minimum 0
+  if (value > 500) {
+    value = 500;
+  } // Maximum 500
   this->send_control_command(REG_THRESHOLD_DISCHARGE, value);
+}
+
+void Fbot::set_screen_timeout(uint16_t minutes) {
+  this->send_control_command(REG_SCREEN_TIMEOUT, minutes);
+}
+
+void Fbot::set_ac_standby(uint16_t minutes) {
+  this->send_control_command(REG_AC_STANDBY, minutes);
+}
+
+void Fbot::set_dc_standby(uint16_t minutes) {
+  this->send_control_command(REG_DC_STANDBY, minutes);
+}
+
+void Fbot::set_usb_standby(uint16_t seconds) {
+  this->send_control_command(REG_USB_STANDBY, seconds);
+}
+
+void Fbot::set_start_charge_after(uint16_t minutes) {
+  this->send_control_command(REG_START_CHARGE_AFTER, minutes);
 }
 
 void Fbot::check_poll_timeout() {
@@ -540,36 +680,61 @@ void Fbot::check_poll_timeout() {
   if (this->last_poll_time_ == 0) {
     return;
   }
-  
+
   // Don't check if we've already hit max failures
   if (this->consecutive_poll_failures_ >= MAX_POLL_FAILURES) {
     return;
   }
-  
+
   uint32_t now = millis();
-  uint32_t time_since_success = (this->last_successful_poll_ > 0) ? (now - this->last_successful_poll_) : 0;
-  
-  // Check if we've exceeded the timeout period since last successful poll
-  if (this->last_successful_poll_ > 0 && time_since_success > POLL_TIMEOUT_MS) {
-    // Increment failure counter only once per timeout period
-    uint32_t time_since_poll = now - this->last_poll_time_;
-    
-    // Only count as a new failure if it's been at least polling_interval since last poll attempt
-    if (time_since_poll >= this->polling_interval_) {
-      this->consecutive_poll_failures_++;
-      
-      ESP_LOGW(TAG, "Poll timeout detected (failure %d/%d)", this->consecutive_poll_failures_, MAX_POLL_FAILURES);
-      
-      // Update last_successful_poll to now plus timeout, so we wait another full timeout period
-      // before incrementing again
-      this->last_successful_poll_ = now;
-      
-      // Check if we've reached the maximum failures
-      if (this->consecutive_poll_failures_ >= MAX_POLL_FAILURES) {
-        ESP_LOGE(TAG, "Max poll failures reached - marking as disconnected and resetting sensors");
-        this->reset_sensors_to_unknown();
-        this->update_connected_state(false);
-      }
+
+  // Check if we are waiting for a response
+  // Timeout if:
+  // 1. It's been more than POLL_TIMEOUT_MS since the last poll attempt
+  // 2. We haven't received a successful response since the last poll attempt
+  if ((now - this->last_poll_time_ > POLL_TIMEOUT_MS) &&
+      (this->last_successful_poll_ < this->last_poll_time_)) {
+
+    // Check if we haven't already counted this specific timeout
+    // We use a small window or flag to avoid incrementing multiple times for
+    // the same request Here we can check if we are significantly past the
+    // timeout (e.g. just crossed the threshold) But since this runs in loop,
+    // simpler to check if we are *exactly* past? No.
+
+    // Better strategy: triggering a timeout should artificially 'advance' the
+    // state or we only check once per interval.
+
+    // Given the current loop structure, let's keep it simple:
+    // If we time out, we increment failure, and update last_successful_poll_ to
+    // avoid re-triggering immediately effectively "skipping" this poll cycle's
+    // success check.
+
+    this->consecutive_poll_failures_++;
+    ESP_LOGW(TAG,
+             "Poll timeout detected (failure %d/%d) - Last poll: %u, Last "
+             "success: %u",
+             this->consecutive_poll_failures_, MAX_POLL_FAILURES,
+             this->last_poll_time_, this->last_successful_poll_);
+
+    // Mark as if we handled it, to prevent rapid-fire increments
+    // We treat 'timeout' as a finalized 'failed' transaction.
+    // We reset last_poll_time_ to 0? No, that would stop polling.
+    // We set last_successful_poll_ to now? That would look like a success.
+    // We can just rely on the fact that next poll will happen at
+    // last_poll_time_ + interval. We just need to ensure we don't count this
+    // SAME failure again in the next loop() call.
+
+    // Hack: Set last_successful_poll_ to now (fake success) so we stop checking
+    // timeout for this cycle. But this resets failure count in
+    // parse_notification? No, parse_notification resets it on *actual* data.
+    // Here we just update the timestamp to stop the 'if' condition from being
+    // true continuously.
+    this->last_successful_poll_ = now;
+
+    if (this->consecutive_poll_failures_ >= MAX_POLL_FAILURES) {
+      ESP_LOGE(TAG, "Max poll failures reached - marking as disconnected");
+      this->reset_sensors_to_unknown();
+      this->update_connected_state(false);
     }
   }
 }
@@ -621,7 +786,7 @@ void Fbot::reset_sensors_to_unknown() {
   if (this->time_to_full_sensor_ != nullptr) {
     this->time_to_full_sensor_->publish_state(NAN);
   }
-  
+
   // Reset binary sensors for output states to unknown
   if (this->usb_active_binary_sensor_ != nullptr) {
     this->usb_active_binary_sensor_->publish_state(false);
@@ -637,7 +802,17 @@ void Fbot::reset_sensors_to_unknown() {
   }
 }
 
-}  // namespace fbot
-}  // namespace esphome
+void Fbot::set_polling_interval(uint32_t interval) {
+  this->polling_interval_ = interval;
+  ESP_LOGI(TAG, "Updated polling interval to %d ms", interval);
+}
 
-#endif  // USE_ESP32
+void Fbot::set_settings_polling_interval(uint32_t interval) {
+  this->settings_polling_interval_ = interval;
+  ESP_LOGI(TAG, "Updated settings polling interval to %d ms", interval);
+}
+
+} // namespace fbot
+} // namespace esphome
+
+#endif // USE_ESP32

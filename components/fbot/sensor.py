@@ -38,6 +38,11 @@ CONF_AC_OUT_VOLTAGE = "ac_out_voltage"
 CONF_AC_OUT_FREQUENCY = "ac_out_frequency"
 CONF_AC_IN_FREQUENCY = "ac_in_frequency"
 CONF_TIME_TO_FULL = "time_to_full"
+CONF_SCREEN_TIMEOUT = "screen_timeout"
+CONF_AC_STANDBY = "ac_standby"
+CONF_DC_STANDBY = "dc_standby"
+CONF_USB_STANDBY = "usb_standby"
+CONF_START_CHARGE_AFTER = "start_charge_after"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -142,6 +147,36 @@ CONFIG_SCHEMA = cv.Schema(
             device_class=DEVICE_CLASS_DURATION,
             state_class=STATE_CLASS_MEASUREMENT,
         ),
+        cv.Optional(CONF_SCREEN_TIMEOUT): sensor.sensor_schema(
+            unit_of_measurement=UNIT_MINUTE,
+            accuracy_decimals=0,
+            device_class=DEVICE_CLASS_DURATION,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_AC_STANDBY): sensor.sensor_schema(
+            unit_of_measurement=UNIT_MINUTE,
+            accuracy_decimals=0,
+            device_class=DEVICE_CLASS_DURATION,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_DC_STANDBY): sensor.sensor_schema(
+            unit_of_measurement=UNIT_MINUTE,
+            accuracy_decimals=0,
+            device_class=DEVICE_CLASS_DURATION,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_USB_STANDBY): sensor.sensor_schema(
+            unit_of_measurement="s",
+            accuracy_decimals=0,
+            device_class=DEVICE_CLASS_DURATION,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_START_CHARGE_AFTER): sensor.sensor_schema(
+            unit_of_measurement=UNIT_MINUTE,
+            accuracy_decimals=0,
+            device_class=DEVICE_CLASS_DURATION,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
     }
 )
 
@@ -215,3 +250,23 @@ async def to_code(config):
     if CONF_TIME_TO_FULL in config:
         sens = await sensor.new_sensor(config[CONF_TIME_TO_FULL])
         cg.add(parent.set_time_to_full_sensor(sens))
+
+    if CONF_SCREEN_TIMEOUT in config:
+        sens = await sensor.new_sensor(config[CONF_SCREEN_TIMEOUT])
+        cg.add(parent.set_screen_timeout_sensor(sens))
+
+    if CONF_AC_STANDBY in config:
+        sens = await sensor.new_sensor(config[CONF_AC_STANDBY])
+        cg.add(parent.set_ac_standby_sensor(sens))
+
+    if CONF_DC_STANDBY in config:
+        sens = await sensor.new_sensor(config[CONF_DC_STANDBY])
+        cg.add(parent.set_dc_standby_sensor(sens))
+
+    if CONF_USB_STANDBY in config:
+        sens = await sensor.new_sensor(config[CONF_USB_STANDBY])
+        cg.add(parent.set_usb_standby_sensor(sens))
+
+    if CONF_START_CHARGE_AFTER in config:
+        sens = await sensor.new_sensor(config[CONF_START_CHARGE_AFTER])
+        cg.add(parent.set_start_charge_after_sensor(sens))

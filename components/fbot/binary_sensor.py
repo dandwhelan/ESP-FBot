@@ -13,6 +13,7 @@ CONF_USB_ACTIVE = "usb_active"
 CONF_DC_ACTIVE = "dc_active"
 CONF_AC_ACTIVE = "ac_active"
 CONF_LIGHT_ACTIVE = "light_active"
+CONF_AC_SILENT_CHARGING_ACTIVE = "ac_silent_charging_active"
 
 DEVICE_CLASS_OUTLET = "plug"
 DEVICE_CLASS_LIGHT = "light"
@@ -43,6 +44,9 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_LIGHT_ACTIVE): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_LIGHT,
             icon="mdi:lightbulb",
+        ),
+        cv.Optional(CONF_AC_SILENT_CHARGING_ACTIVE): binary_sensor.binary_sensor_schema(
+            icon="mdi:volume-off",
         ),
     }
 )
@@ -77,3 +81,8 @@ async def to_code(config):
     if CONF_LIGHT_ACTIVE in config:
         sens = await binary_sensor.new_binary_sensor(config[CONF_LIGHT_ACTIVE])
         cg.add(parent.set_light_active_binary_sensor(sens))
+
+    if CONF_AC_SILENT_CHARGING_ACTIVE in config:
+        sens = await binary_sensor.new_binary_sensor(config[CONF_AC_SILENT_CHARGING_ACTIVE])
+        cg.add(parent.set_silent_charging_binary_sensor(sens))
+

@@ -1,0 +1,222 @@
+esphome:
+  name: fossi
+  friendly_name: Fossibot 
+  comment: "Fossi 2400 Portable Power Station"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "8Pc3OyIRGeBfeD6jxIEWR3dtsQIq6aYCliGvWQqr56o="
+
+ota:
+  - platform: esphome
+    password: "fossibot123)"
+
+# This assumed you put your WIFI SSID and passing in the secrets file
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Load external component from local path
+external_components:
+  - source: 
+      type: local
+      path: components
+
+# BLE Client configuration
+esp32_ble_tracker:
+  scan_parameters:
+    duration: 5min
+    active: true
+
+ble_client:
+  - mac_address: "DC:1E:D5:E4:07:1E"  # Replace with your Fossibot MAC address
+
+# Configure the Fbot component. This component will inherit the ble_client above.
+fbot:
+  id: my_fbot
+  polling_interval: 15s              # Status data (default: 2s)
+  settings_polling_interval: 60s    # Holding registers (default: 60s)
+
+# Binary sensors for connection and output states
+binary_sensor:
+  - platform: fbot
+    fbot_id: my_fbot
+    connected:
+      name: "Connected"
+    # Optional sensors to indicate if the extra batteries 1 is connected
+    battery_connected_s1:
+      name: "Connected S1"
+    # Optional sensors to indicate if the extra batteries 2 is connected
+    battery_connected_s2:
+      name: "Connected S2"
+    usb_active:
+      name: "USB Active"
+    dc_active:
+      name: "DC Active"
+    ac_active:
+      name: "AC Inverter Active"
+    light_active:
+      name: "Light Active"
+    ac_silent_charging_active:
+      name: "AC Silent Charging Active"
+
+# Sensors for battery and power readings
+sensor:
+  - platform: fbot
+    fbot_id: my_fbot
+    battery_level:
+      name: "Battery"
+      id: battery_percent
+    # Optional sensors for the state of charge of extra battery 1
+    battery_s1_level:
+      name: "Battery S1"
+      id: battery_percent_s1
+    # Optional sensors for the state of charge of extra battery 2
+    battery_s2_level:
+      name: "Battery S2"
+      id: battery_percent_s2
+    ac_input_power:
+      name: "AC Input Power"
+      id: ac_input_watts
+    dc_input_power:
+      name: "DC Input Power"
+      id: dc_input_watts
+    input_power:
+      name: "Total Input Power"
+      id: input_watts
+    output_power:
+      name: "Output Power"
+      id: output_watts
+    system_power:
+      name: "System Power"
+      id: system_watts
+    total_power:
+      name: "Total Output Power"
+      id: total_watts
+    remaining_time:
+      name: "Remaining Minutes"
+      id: remaining_minutes
+    ac_out_voltage:
+      name: "AC Output Voltage"
+    ac_out_frequency:
+      name: "AC Output Frequency"
+    ac_in_frequency:
+      name: "AC Input Frequency"
+    time_to_full:
+      name: "Time to Full Charge"
+    screen_timeout:
+      name: "Screen Timeout"
+    ac_standby:
+      name: "AC Standby"
+    dc_standby:
+      name: "DC Standby"
+    usb_standby:
+      name: "USB Standby"
+    start_charge_after:
+      name: "Start Charge After"
+    # Optional sensors for charge/discharge thresholds
+    threshold_charge:
+      name: "Charge Threshold"
+      id: threshold_charge
+    threshold_discharge:
+      name: "Discharge Threshold"
+      id: threshold_discharge
+    charge_level:
+      name: "Charge Level"
+  # Convert remaining time from minutes to hours
+  - platform: template
+    name: "Remaining Hours"
+    lambda: |-
+      if (id(remaining_minutes).has_state()) {
+        return id(remaining_minutes).state / 60.0;
+      }
+      return 0.0;
+    unit_of_measurement: "h"
+    accuracy_decimals: 1
+    device_class: duration
+    state_class: measurement
+  # Net power (positive = charging, negative = discharging)
+  - platform: template
+    name: "Net Charging Power"
+    lambda: |-
+      if (id(input_watts).has_state() && id(output_watts).has_state()) {
+        return id(input_watts).state - id(output_watts).state;
+      }
+      return 0.0;
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+    device_class: power
+    state_class: measurement
+
+# Switches to control outputs
+switch:
+  - platform: fbot
+    fbot_id: my_fbot
+    usb:
+      name: "USB Output"
+      id: usb_switch
+    dc:
+      name: "DC Output"
+      id: dc_switch
+    ac:
+      name: "AC Inverter"
+      id: ac_switch
+    light:
+      name: "Light"
+      id: light_switch
+    ac_silent_charging:
+      name: "AC Silent Charging"
+      id: ac_silent_switch
+
+# Number controls for charge/discharge thresholds
+number:
+  - platform: fbot
+    fbot_id: my_fbot
+    # Charge threshold: stop charging when battery reaches this level (10-100%)
+    threshold_charge:
+      name: "Charge Max"
+      min_value: 10
+      max_value: 100
+      step: 1
+    # Discharge threshold: stop discharging when battery reaches this level (0-50%)
+    threshold_discharge:
+      name: "Discharge Min"
+      min_value: 0
+      max_value: 50
+      step: 1
+    # Polling intervals
+    polling_interval:
+      name: "Polling Interval"
+      entity_category: config
+      mode: box
+    settings_polling_interval:
+      name: "Settings Polling Interval"
+      entity_category: config
+      mode: box
+    # Device Settings
+    screen_timeout:
+      name: "Set Screen Timeout"
+      entity_category: config
+      mode: box
+    ac_standby:
+      name: "Set AC Standby"
+      entity_category: config
+    dc_standby:
+      name: "Set DC Standby"
+      entity_category: config
+    usb_standby:
+      name: "Set USB Standby"
+      entity_category: config
+    start_charge_after:
+      name: "Set Start Charging After"
+      entity_category: config
