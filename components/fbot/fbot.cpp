@@ -596,6 +596,65 @@ void Fbot::set_threshold_discharge(float percent) {
   this->send_control_command(REG_THRESHOLD_DISCHARGE, value);
 }
 
+void Fbot::set_wifi_credentials(const std::string &ssid, const std::string &password) {
+  if (!this->connected_ || !this->characteristics_discovered_) {
+    ESP_LOGW(TAG, "Cannot set WiFi credentials: not connected");
+    return;
+  }
+  
+  // Validate SSID and password lengths
+  if (ssid.length() == 0 || ssid.length() > 255) {
+    ESP_LOGW(TAG, "Invalid SSID length: %d (must be 1-255)", ssid.length());
+    return;
+  }
+  if (password.length() == 0 || password.length() > 255) {
+    ESP_LOGW(TAG, "Invalid password length: %d (must be 1-255)", password.length());
+    return;
+  }
+  
+  // Build WiFi configuration packet
+  // Format: [Header, OpCode, SSID_Len, Pass_Len, SSID..., Password..., CRC]
+  uint8_t ssid_len = static_cast<uint8_t>(ssid.length());
+  uint8_t pass_len = static_cast<uint8_t>(password.length());
+  
+  // Calculate total packet size: header(1) + opcode(1) + ssid_len(1) + pass_len(1) + ssid + password + crc(2)
+  size_t packet_size = 4 + ssid_len + pass_len + 2;
+  uint8_t *packet = new uint8_t[packet_size];
+  
+  // Build packet
+  packet[0] = 0x11;  // Header
+  packet[1] = 0x07;  // OpCode for WiFi configuration
+  packet[2] = ssid_len;
+  packet[3] = pass_len;
+  
+  // Copy SSID
+  memcpy(&packet[4], ssid.c_str(), ssid_len);
+  
+  // Copy password
+  memcpy(&packet[4 + ssid_len], password.c_str(), pass_len);
+  
+  // Calculate and append CRC
+  uint16_t crc = this->calculate_checksum(packet, packet_size - 2);
+  packet[packet_size - 2] = (crc >> 8) & 0xFF;
+  packet[packet_size - 1] = crc & 0xFF;
+  
+  // Send the WiFi configuration command
+  auto status = esp_ble_gattc_write_char(this->parent()->get_gattc_if(), this->parent()->get_conn_id(),
+                                         this->write_handle_, packet_size, packet,
+                                         ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+  
+  if (status) {
+    ESP_LOGW(TAG, "Error sending WiFi credentials, status=%d", status);
+  } else {
+    ESP_LOGI(TAG, "Sent WiFi credentials: SSID='%s' (len=%d), Password length=%d", 
+             ssid.c_str(), ssid_len, pass_len);
+    ESP_LOGI(TAG, "Device will connect to WiFi and disable AP mode");
+  }
+  
+  // Clean up
+  delete[] packet;
+}
+
 void Fbot::check_poll_timeout() {
   // Only check timeout if we've started polling
   if (this->last_poll_time_ == 0) {
