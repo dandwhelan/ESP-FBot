@@ -596,7 +596,7 @@ void Fbot::set_threshold_discharge(float percent) {
   this->send_control_command(REG_THRESHOLD_DISCHARGE, value);
 }
 
-void Fbot::set_wifi_credentials(char *ssid, char *password) {
+void Fbot::set_wifi_credentials(const char *ssid, const char *password) {
   if (!this->connected_ || !this->characteristics_discovered_) {
     ESP_LOGW(TAG, "Cannot set WiFi credentials: not connected");
     return;
