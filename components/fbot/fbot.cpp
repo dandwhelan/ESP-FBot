@@ -463,6 +463,24 @@ void Fbot::parse_settings_notification(const uint8_t *data, uint16_t length) {
     this->key_sound_switch_->publish_state(key_sound_state);
   }
   
+  // Parse Light Mode state (register 27: 0=Off, 1=On, 2=Flashing, 3=SOS)
+  uint16_t light_mode_value = this->get_register(data, length, REG_LIGHT_CONTROL);
+  
+#ifdef USE_SELECT
+  // Sync Light Mode select state with device
+  if (this->light_mode_select_ != nullptr) {
+    std::string light_mode;
+    switch (light_mode_value) {
+      case 0: light_mode = "Off"; break;
+      case 1: light_mode = "On"; break;
+      case 2: light_mode = "Flashing"; break;
+      case 3: light_mode = "SOS"; break;
+      default: light_mode = "Off"; break;
+    }
+    this->light_mode_select_->publish_state(light_mode);
+  }
+#endif
+  
   // Parse threshold registers (66 and 67 from holding registers)
   // Values are in permille (divide by 10 for percentage)
   float threshold_discharge = this->get_register(data, length, REG_THRESHOLD_DISCHARGE) / 10.0f;
@@ -511,7 +529,33 @@ void Fbot::control_ac(bool state) {
 }
 
 void Fbot::control_light(bool state) {
+  // Simple on/off control - uses value 1 for on, 0 for off
   this->send_control_command(REG_LIGHT_CONTROL, state ? 1 : 0);
+}
+
+void Fbot::control_light_mode(const std::string &value) {
+  // Map the mode string to register value
+  uint16_t mode_value = 0;
+  if (value == "Off") {
+    mode_value = 0;
+  } else if (value == "On") {
+    mode_value = 1;
+  } else if (value == "Flashing") {
+    mode_value = 2;
+  } else if (value == "SOS") {
+    mode_value = 3;
+  } else {
+    ESP_LOGW(TAG, "Unknown light mode: %s", value.c_str());
+    return;
+  }
+  
+  ESP_LOGI(TAG, "Setting light mode to: %s (value: %d)", value.c_str(), mode_value);
+  this->send_control_command(REG_LIGHT_CONTROL, mode_value);
+  
+  // Update the light switch state based on the mode (off=false, any other mode=true)
+  if (this->light_switch_ != nullptr) {
+    this->light_switch_->publish_state(mode_value != 0);
+  }
 }
 
 void Fbot::control_ac_silent(bool state) {

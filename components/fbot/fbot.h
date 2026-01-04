@@ -11,6 +11,10 @@
 #include "esphome/components/number/number.h"
 #endif
 
+#ifdef USE_SELECT
+#include "esphome/components/select/select.h"
+#endif
+
 #ifdef USE_ESP32
 
 #include <esp_gattc_api.h>
@@ -103,6 +107,11 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   void set_ac_silent_switch(switch_::Switch *sw) { this->ac_silent_switch_ = sw; }
   void set_key_sound_switch(switch_::Switch *sw) { this->key_sound_switch_ = sw; }
   
+#ifdef USE_SELECT
+  // Select setters
+  void set_light_mode_select(select::Select *sel) { this->light_mode_select_ = sel; }
+#endif
+  
 #ifdef USE_NUMBER
   // Number setters
   void set_threshold_charge_number(number::Number *num) { this->threshold_charge_number_ = num; }
@@ -116,6 +125,9 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   void control_light(bool state);
   void control_ac_silent(bool state);
   void control_key_sound(bool state);
+
+  // Control methods for selects
+  void control_light_mode(const std::string &value);
 
   // Control methods for thresholds
   void set_threshold_charge(float percent);
@@ -186,6 +198,11 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   // Numbers
   number::Number *threshold_charge_number_{nullptr};
   number::Number *threshold_discharge_number_{nullptr};
+#endif
+  
+#ifdef USE_SELECT
+  // Selects
+  select::Select *light_mode_select_{nullptr};
 #endif
   
   // Protocol methods
