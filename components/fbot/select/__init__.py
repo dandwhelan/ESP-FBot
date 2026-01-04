@@ -14,8 +14,8 @@ FbotSelect = fbot_ns.class_("FbotSelect", select.Select, cg.Component)
 LIGHT_MODE_OPTIONS = {
     "Off": 0,
     "On": 1,
-    "Flashing": 2,
-    "SOS": 3,
+    "SOS": 2,
+    "Flashing": 3,
 }
 
 SELECT_TYPES = {

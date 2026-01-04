@@ -572,9 +572,9 @@ void Fbot::control_light_mode(const std::string &value) {
     mode_value = 0;
   } else if (value == "On") {
     mode_value = 1;
-  } else if (value == "Flashing") {
-    mode_value = 2;
   } else if (value == "SOS") {
+    mode_value = 2;
+  } else if (value == "Flashing") {
     mode_value = 3;
   } else {
     ESP_LOGW(TAG, "Unknown light mode: %s", value.c_str());
