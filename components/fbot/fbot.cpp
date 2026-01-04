@@ -69,6 +69,12 @@ void Fbot::dump_config() {
   LOG_SENSOR("  ", "AC Out Frequency", this->ac_out_frequency_sensor_);
   LOG_SENSOR("  ", "AC In Frequency", this->ac_in_frequency_sensor_);
   LOG_SENSOR("  ", "Time to Full", this->time_to_full_sensor_);
+  LOG_SENSOR("  ", "USB-A1 Power", this->usb_a1_power_sensor_);
+  LOG_SENSOR("  ", "USB-A2 Power", this->usb_a2_power_sensor_);
+  LOG_SENSOR("  ", "USB-C1 Power", this->usb_c1_power_sensor_);
+  LOG_SENSOR("  ", "USB-C2 Power", this->usb_c2_power_sensor_);
+  LOG_SENSOR("  ", "USB-C3 Power", this->usb_c3_power_sensor_);
+  LOG_SENSOR("  ", "USB-C4 Power", this->usb_c4_power_sensor_);
   LOG_BINARY_SENSOR("  ", "Connected", this->connected_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Battery S1 Connected", this->battery_connected_s1_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Battery S2 Connected", this->battery_connected_s2_binary_sensor_);
@@ -344,6 +350,14 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   uint16_t time_to_full = this->get_register(data, length, 58);
   uint16_t remaining_minutes = this->get_register(data, length, 59);
   
+  // USB port power outputs (multiply by 0.1 to convert to watts)
+  float usb_a1_power = this->get_register(data, length, REG_USB_A1_OUT) * 0.1f;
+  float usb_a2_power = this->get_register(data, length, REG_USB_A2_OUT) * 0.1f;
+  float usb_c1_power = this->get_register(data, length, REG_USB_C1_OUT) * 0.1f;
+  float usb_c2_power = this->get_register(data, length, REG_USB_C2_OUT) * 0.1f;
+  float usb_c3_power = this->get_register(data, length, REG_USB_C3_OUT) * 0.1f;
+  float usb_c4_power = this->get_register(data, length, REG_USB_C4_OUT) * 0.1f;
+  
   // Publish sensor values
   if (this->battery_percent_sensor_ != nullptr) {
     this->battery_percent_sensor_->publish_state(battery_percent);
@@ -389,6 +403,24 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   }
   if (this->time_to_full_sensor_ != nullptr) {
     this->time_to_full_sensor_->publish_state(time_to_full);
+  }
+  if (this->usb_a1_power_sensor_ != nullptr) {
+    this->usb_a1_power_sensor_->publish_state(usb_a1_power);
+  }
+  if (this->usb_a2_power_sensor_ != nullptr) {
+    this->usb_a2_power_sensor_->publish_state(usb_a2_power);
+  }
+  if (this->usb_c1_power_sensor_ != nullptr) {
+    this->usb_c1_power_sensor_->publish_state(usb_c1_power);
+  }
+  if (this->usb_c2_power_sensor_ != nullptr) {
+    this->usb_c2_power_sensor_->publish_state(usb_c2_power);
+  }
+  if (this->usb_c3_power_sensor_ != nullptr) {
+    this->usb_c3_power_sensor_->publish_state(usb_c3_power);
+  }
+  if (this->usb_c4_power_sensor_ != nullptr) {
+    this->usb_c4_power_sensor_->publish_state(usb_c4_power);
   }
 
   // Update binary sensors for battery connection status
@@ -740,6 +772,24 @@ void Fbot::reset_sensors_to_unknown() {
   }
   if (this->time_to_full_sensor_ != nullptr) {
     this->time_to_full_sensor_->publish_state(NAN);
+  }
+  if (this->usb_a1_power_sensor_ != nullptr) {
+    this->usb_a1_power_sensor_->publish_state(NAN);
+  }
+  if (this->usb_a2_power_sensor_ != nullptr) {
+    this->usb_a2_power_sensor_->publish_state(NAN);
+  }
+  if (this->usb_c1_power_sensor_ != nullptr) {
+    this->usb_c1_power_sensor_->publish_state(NAN);
+  }
+  if (this->usb_c2_power_sensor_ != nullptr) {
+    this->usb_c2_power_sensor_->publish_state(NAN);
+  }
+  if (this->usb_c3_power_sensor_ != nullptr) {
+    this->usb_c3_power_sensor_->publish_state(NAN);
+  }
+  if (this->usb_c4_power_sensor_ != nullptr) {
+    this->usb_c4_power_sensor_->publish_state(NAN);
   }
   
   // Reset binary sensors for output states to unknown

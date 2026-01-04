@@ -32,6 +32,12 @@ static const uint8_t REG_USB_CONTROL = 24;
 static const uint8_t REG_DC_CONTROL = 25;
 static const uint8_t REG_AC_CONTROL = 26;
 static const uint8_t REG_LIGHT_CONTROL = 27;
+static const uint8_t REG_USB_A1_OUT = 30;
+static const uint8_t REG_USB_A2_OUT = 31;
+static const uint8_t REG_USB_C1_OUT = 34;
+static const uint8_t REG_USB_C2_OUT = 35;
+static const uint8_t REG_USB_C3_OUT = 36;
+static const uint8_t REG_USB_C4_OUT = 37;
 static const uint8_t REG_KEY_SOUND = 56;
 static const uint8_t REG_AC_SILENT_CONTROL = 57;
 static const uint8_t REG_THRESHOLD_DISCHARGE = 66;
@@ -75,6 +81,12 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   void set_ac_out_frequency_sensor(sensor::Sensor *sensor) { this->ac_out_frequency_sensor_ = sensor; }
   void set_ac_in_frequency_sensor(sensor::Sensor *sensor) { this->ac_in_frequency_sensor_ = sensor; }
   void set_time_to_full_sensor(sensor::Sensor *sensor) { this->time_to_full_sensor_ = sensor; }
+  void set_usb_a1_power_sensor(sensor::Sensor *sensor) { this->usb_a1_power_sensor_ = sensor; }
+  void set_usb_a2_power_sensor(sensor::Sensor *sensor) { this->usb_a2_power_sensor_ = sensor; }
+  void set_usb_c1_power_sensor(sensor::Sensor *sensor) { this->usb_c1_power_sensor_ = sensor; }
+  void set_usb_c2_power_sensor(sensor::Sensor *sensor) { this->usb_c2_power_sensor_ = sensor; }
+  void set_usb_c3_power_sensor(sensor::Sensor *sensor) { this->usb_c3_power_sensor_ = sensor; }
+  void set_usb_c4_power_sensor(sensor::Sensor *sensor) { this->usb_c4_power_sensor_ = sensor; }
   
   // Binary sensor setters
   void set_connected_binary_sensor(binary_sensor::BinarySensor *sensor) { 
@@ -179,6 +191,12 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   sensor::Sensor *ac_out_frequency_sensor_{nullptr};
   sensor::Sensor *ac_in_frequency_sensor_{nullptr};
   sensor::Sensor *time_to_full_sensor_{nullptr};
+  sensor::Sensor *usb_a1_power_sensor_{nullptr};
+  sensor::Sensor *usb_a2_power_sensor_{nullptr};
+  sensor::Sensor *usb_c1_power_sensor_{nullptr};
+  sensor::Sensor *usb_c2_power_sensor_{nullptr};
+  sensor::Sensor *usb_c3_power_sensor_{nullptr};
+  sensor::Sensor *usb_c4_power_sensor_{nullptr};
   
   // Binary sensors
   binary_sensor::BinarySensor *connected_binary_sensor_{nullptr};

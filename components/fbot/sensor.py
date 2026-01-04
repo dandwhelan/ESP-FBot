@@ -38,6 +38,12 @@ CONF_AC_OUT_VOLTAGE = "ac_out_voltage"
 CONF_AC_OUT_FREQUENCY = "ac_out_frequency"
 CONF_AC_IN_FREQUENCY = "ac_in_frequency"
 CONF_TIME_TO_FULL = "time_to_full"
+CONF_USB_A1_POWER = "usb_a1_power"
+CONF_USB_A2_POWER = "usb_a2_power"
+CONF_USB_C1_POWER = "usb_c1_power"
+CONF_USB_C2_POWER = "usb_c2_power"
+CONF_USB_C3_POWER = "usb_c3_power"
+CONF_USB_C4_POWER = "usb_c4_power"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -142,6 +148,42 @@ CONFIG_SCHEMA = cv.Schema(
             device_class=DEVICE_CLASS_DURATION,
             state_class=STATE_CLASS_MEASUREMENT,
         ),
+        cv.Optional(CONF_USB_A1_POWER): sensor.sensor_schema(
+            unit_of_measurement=UNIT_WATT,
+            accuracy_decimals=1,
+            device_class=DEVICE_CLASS_POWER,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_USB_A2_POWER): sensor.sensor_schema(
+            unit_of_measurement=UNIT_WATT,
+            accuracy_decimals=1,
+            device_class=DEVICE_CLASS_POWER,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_USB_C1_POWER): sensor.sensor_schema(
+            unit_of_measurement=UNIT_WATT,
+            accuracy_decimals=1,
+            device_class=DEVICE_CLASS_POWER,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_USB_C2_POWER): sensor.sensor_schema(
+            unit_of_measurement=UNIT_WATT,
+            accuracy_decimals=1,
+            device_class=DEVICE_CLASS_POWER,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_USB_C3_POWER): sensor.sensor_schema(
+            unit_of_measurement=UNIT_WATT,
+            accuracy_decimals=1,
+            device_class=DEVICE_CLASS_POWER,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
+        cv.Optional(CONF_USB_C4_POWER): sensor.sensor_schema(
+            unit_of_measurement=UNIT_WATT,
+            accuracy_decimals=1,
+            device_class=DEVICE_CLASS_POWER,
+            state_class=STATE_CLASS_MEASUREMENT,
+        ),
     }
 )
 
@@ -215,3 +257,27 @@ async def to_code(config):
     if CONF_TIME_TO_FULL in config:
         sens = await sensor.new_sensor(config[CONF_TIME_TO_FULL])
         cg.add(parent.set_time_to_full_sensor(sens))
+
+    if CONF_USB_A1_POWER in config:
+        sens = await sensor.new_sensor(config[CONF_USB_A1_POWER])
+        cg.add(parent.set_usb_a1_power_sensor(sens))
+
+    if CONF_USB_A2_POWER in config:
+        sens = await sensor.new_sensor(config[CONF_USB_A2_POWER])
+        cg.add(parent.set_usb_a2_power_sensor(sens))
+
+    if CONF_USB_C1_POWER in config:
+        sens = await sensor.new_sensor(config[CONF_USB_C1_POWER])
+        cg.add(parent.set_usb_c1_power_sensor(sens))
+
+    if CONF_USB_C2_POWER in config:
+        sens = await sensor.new_sensor(config[CONF_USB_C2_POWER])
+        cg.add(parent.set_usb_c2_power_sensor(sens))
+
+    if CONF_USB_C3_POWER in config:
+        sens = await sensor.new_sensor(config[CONF_USB_C3_POWER])
+        cg.add(parent.set_usb_c3_power_sensor(sens))
+
+    if CONF_USB_C4_POWER in config:
+        sens = await sensor.new_sensor(config[CONF_USB_C4_POWER])
+        cg.add(parent.set_usb_c4_power_sensor(sens))
