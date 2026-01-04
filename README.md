@@ -167,6 +167,18 @@ sensor:
       id: threshold_discharge
     charge_level:
       name: "Charge Level"
+    usb_a1_power:
+      name: "USB-A1 Power"
+    usb_a2_power:
+      name: "USB-A2 Power"
+    usb_c1_power:
+      name: "USB-C1 Power"
+    usb_c2_power:
+      name: "USB-C2 Power"
+    usb_c3_power:
+      name: "USB-C3 Power"
+    usb_c4_power:
+      name: "USB-C4 Power"
   # Convert remaining time from minutes to hours
   - platform: template
     name: "Remaining Hours"
@@ -198,6 +210,9 @@ sensor:
 switch:
   - platform: fbot
     fbot_id: my_fbot
+    key_sound:
+      name: "Key Sound"
+      id: keysound_switch
     usb:
       name: "USB Output"
       id: usb_switch
@@ -230,6 +245,12 @@ number:
       min_value: 0
       max_value: 50
       step: 1
+
+select:
+  - platform: fbot
+    fbot_id: my_fbot
+    light_mode:
+      name: "Light Mode"
 ```
 
 </details>
