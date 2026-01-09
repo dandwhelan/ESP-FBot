@@ -624,7 +624,13 @@ void Fbot::control_charge_level(const std::string &value) {
   } else if (value == "1100W") {
     reg_value = 5;
   } else {
-    ESP_LOGW(TAG, "Unknown charge level: %s", value.c_str());
+    ESP_LOGW(TAG, "Unknown charge level: %s, not setting register", value.c_str());
+    return;
+  }
+  
+  // Guard: Only allow values 1-5 to be written to register 2
+  if (reg_value < 1 || reg_value > 5) {
+    ESP_LOGW(TAG, "Invalid charge level register value: %d, must be 1-5", reg_value);
     return;
   }
   
