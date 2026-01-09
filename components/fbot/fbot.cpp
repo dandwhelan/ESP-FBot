@@ -320,6 +320,7 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   float battery_percent_s2 = this->get_register(data, length, 55) / 10.0f - 1.0f;
   
   // Charge level: register 2, values 1-5 map to 300W-1100W (increment by 200W)
+  // 1 = 300, 2 = 500, 3 = 700, 4 = 900, 5 = 1100W
   uint16_t charge_level_raw = this->get_register(data, length, 2);
   uint16_t charge_level_watts = 0;
   if (charge_level_raw >= 1 && charge_level_raw <= 5) {
@@ -392,6 +393,24 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   if (this->charge_level_sensor_ != nullptr) {
     this->charge_level_sensor_->publish_state(charge_level_watts);
   }
+  
+#ifdef USE_SELECT
+  // Sync Charge Level select state with device
+  if (this->charge_level_select_ != nullptr && charge_level_raw >= 1 && charge_level_raw <= 5) {
+    std::string charge_level_str;
+    switch (charge_level_raw) {
+      case 1: charge_level_str = "300W"; break;
+      case 2: charge_level_str = "500W"; break;
+      case 3: charge_level_str = "700W"; break;
+      case 4: charge_level_str = "900W"; break;
+      case 5: charge_level_str = "1100W"; break;
+      default: break;
+    }
+    if (!charge_level_str.empty()) {
+      this->charge_level_select_->publish_state(charge_level_str);
+    }
+  }
+#endif
   if (this->ac_out_voltage_sensor_ != nullptr) {
     this->ac_out_voltage_sensor_->publish_state(ac_out_voltage);
   }
@@ -588,6 +607,29 @@ void Fbot::control_light_mode(const std::string &value) {
   if (this->light_switch_ != nullptr) {
     this->light_switch_->publish_state(mode_value != 0);
   }
+}
+
+void Fbot::control_charge_level(const std::string &value) {
+  // Map the wattage string to register value
+  // Register 2: 1 = 300W, 2 = 500W, 3 = 700W, 4 = 900W, 5 = 1100W
+  uint16_t reg_value = 0;
+  if (value == "300W") {
+    reg_value = 1;
+  } else if (value == "500W") {
+    reg_value = 2;
+  } else if (value == "700W") {
+    reg_value = 3;
+  } else if (value == "900W") {
+    reg_value = 4;
+  } else if (value == "1100W") {
+    reg_value = 5;
+  } else {
+    ESP_LOGW(TAG, "Unknown charge level: %s", value.c_str());
+    return;
+  }
+  
+  ESP_LOGI(TAG, "Setting charge level to: %s (register value: %d)", value.c_str(), reg_value);
+  this->send_control_command(2, reg_value);  // Register 2 for charge level
 }
 
 void Fbot::control_ac_silent(bool state) {

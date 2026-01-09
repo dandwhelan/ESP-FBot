@@ -122,6 +122,7 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
 #ifdef USE_SELECT
   // Select setters
   void set_light_mode_select(select::Select *sel) { this->light_mode_select_ = sel; }
+  void set_charge_level_select(select::Select *sel) { this->charge_level_select_ = sel; }
 #endif
   
 #ifdef USE_NUMBER
@@ -140,6 +141,7 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
 
   // Control methods for selects
   void control_light_mode(const std::string &value);
+  void control_charge_level(const std::string &value);
 
   // Control methods for thresholds
   void set_threshold_charge(float percent);
@@ -224,6 +226,7 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
 #ifdef USE_SELECT
   // Selects
   select::Select *light_mode_select_{nullptr};
+  select::Select *charge_level_select_{nullptr};
 #endif
   
   // Protocol methods
