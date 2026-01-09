@@ -32,8 +32,6 @@ void FbotSelect::control(const std::string &value) {
   // Call the appropriate control method based on select type
   if (this->select_type_ == "light_mode") {
     this->parent_->control_light_mode(value);
-  } else if (this->select_type_ == "charge_level") {
-    this->parent_->control_charge_level(value);
   } else {
     ESP_LOGW(TAG, "Unknown select type: %s", this->select_type_.c_str());
     return;

@@ -7,7 +7,6 @@ from .. import fbot_ns, Fbot, CONF_FBOT_ID
 DEPENDENCIES = ["fbot"]
 
 CONF_LIGHT_MODE = "light_mode"
-CONF_CHARGE_LEVEL = "charge_level"
 
 FbotSelect = fbot_ns.class_("FbotSelect", select.Select, cg.Component)
 
@@ -19,19 +18,8 @@ LIGHT_MODE_OPTIONS = {
     "Flashing": 3,
 }
 
-# Charge level options mapping to register values (register 2)
-# 1 = 300W, 2 = 500W, 3 = 700W, 4 = 900W, 5 = 1100W
-CHARGE_LEVEL_OPTIONS = {
-    "300W": 1,
-    "500W": 2,
-    "700W": 3,
-    "900W": 4,
-    "1100W": 5,
-}
-
 SELECT_TYPES = {
     CONF_LIGHT_MODE: "light_mode",
-    CONF_CHARGE_LEVEL: "charge_level",
 }
 
 CONFIG_SCHEMA = cv.Schema(
@@ -41,10 +29,6 @@ CONFIG_SCHEMA = cv.Schema(
             FbotSelect,
             icon="mdi:lightbulb-multiple",
         ),
-        cv.Optional(CONF_CHARGE_LEVEL): select.select_schema(
-            FbotSelect,
-            icon="mdi:battery-charging",
-        ),
     }
 )
 
@@ -53,15 +37,7 @@ async def to_code(config):
     
     for key, select_type in SELECT_TYPES.items():
         if key in config:
-            # Use the appropriate options based on select type
-            if key == CONF_LIGHT_MODE:
-                options = list(LIGHT_MODE_OPTIONS.keys())
-            elif key == CONF_CHARGE_LEVEL:
-                options = list(CHARGE_LEVEL_OPTIONS.keys())
-            else:
-                options = []
-            
-            var = await select.new_select(config[key], options=options)
+            var = await select.new_select(config[key], options=list(LIGHT_MODE_OPTIONS.keys()))
             await cg.register_component(var, config[key])
             cg.add(var.set_parent(parent))
             cg.add(var.set_select_type(select_type))
@@ -69,5 +45,3 @@ async def to_code(config):
             # Register select with parent to enable state synchronization
             if key == CONF_LIGHT_MODE:
                 cg.add(parent.set_light_mode_select(var))
-            elif key == CONF_CHARGE_LEVEL:
-                cg.add(parent.set_charge_level_select(var))
