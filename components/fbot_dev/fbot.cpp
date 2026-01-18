@@ -91,6 +91,7 @@ void Fbot::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_i
   switch (event) {
     case ESP_GATTC_OPEN_EVT: {
       if (param->open.status == ESP_GATT_OK) {
+        control_key_sound(false);  // Disable key sound on connect
         ESP_LOGI(TAG, "Connected to Fbot");
         this->connected_ = true;
         this->consecutive_poll_failures_ = 0;
@@ -262,7 +263,6 @@ void Fbot::send_settings_request() {
 }
 
 void Fbot::send_control_command(uint16_t reg, uint16_t value) {
-  /*
   if (!this->connected_ || !this->characteristics_discovered_) {
     ESP_LOGW(TAG, "Cannot send command: not connected");
     return;
@@ -281,7 +281,6 @@ void Fbot::send_control_command(uint16_t reg, uint16_t value) {
     // Request update after full polling interval (2000ms) to allow inverter to stabilize
     this->last_poll_time_ = millis();
   }
-  */
 }
 
 uint16_t Fbot::get_register(const uint8_t *data, uint16_t length, uint16_t reg_index) {
