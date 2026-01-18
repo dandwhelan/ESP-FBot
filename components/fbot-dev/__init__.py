@@ -11,9 +11,9 @@ CONF_FBOT_ID = "fbot_id"
 CONF_POLLING_INTERVAL = "polling_interval"
 CONF_SETTINGS_POLLING_INTERVAL = "settings_polling_interval"
 
-fbot_ns = cg.esphome_ns.namespace("fbot")
+fbot_ns = cg.esphome_ns.namespace("fbot-dev")
 Fbot = fbot_ns.class_(
-    "Fbot", cg.Component, ble_client.BLEClientNode
+    "Fbot-Dev", cg.Component, ble_client.BLEClientNode
 )
 
 CONFIG_SCHEMA = cv.All(
