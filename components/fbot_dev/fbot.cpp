@@ -92,7 +92,7 @@ void Fbot::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_i
     case ESP_GATTC_OPEN_EVT: {
       if (param->open.status == ESP_GATT_OK) {
         control_key_sound(false);  // Disable key sound on connect
-        ESP_LOGI(TAG, "Connected to Fbot");
+        ESP_LOGI(TAG, "Connected to Fbot - X1");
         this->connected_ = true;
         this->consecutive_poll_failures_ = 0;
         this->last_successful_poll_ = 0;
