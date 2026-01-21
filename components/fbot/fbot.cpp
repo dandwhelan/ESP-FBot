@@ -518,7 +518,7 @@ void Fbot::parse_settings_notification(const uint8_t *data, uint16_t length) {
   
   // Sync AC Charge Limit select state with device
   if (this->ac_charge_limit_select_ != nullptr && ac_charge_limit_value >= 1 && ac_charge_limit_value <= 5) {
-    auto options = this->ac_charge_limit_select_->traits.get_options();
+    const auto &options = this->ac_charge_limit_select_->traits.get_options();
     size_t index = ac_charge_limit_value - 1;  // Convert register value (1-5) to index (0-4)
     if (index < options.size()) {
       this->ac_charge_limit_select_->publish_state(options[index]);
@@ -611,7 +611,7 @@ void Fbot::control_ac_charge_limit(const std::string &value) {
     return;
   }
   
-  auto options = this->ac_charge_limit_select_->traits.get_options();
+  const auto &options = this->ac_charge_limit_select_->traits.get_options();
   for (size_t i = 0; i < options.size(); i++) {
     if (options[i] == value) {
       uint16_t reg_value = i + 1;  // Convert index (0-4) to register value (1-5)
