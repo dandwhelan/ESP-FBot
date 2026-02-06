@@ -32,6 +32,14 @@ void FbotSwitch::write_state(bool state) {
     return;
   }
   
+  // Check if the desired state matches the current state
+  // This prevents sending unnecessary commands which some devices interpret as toggles
+  if (state == this->state) {
+    ESP_LOGD(TAG, "Switch '%s' already in desired state %s, skipping command", 
+             this->switch_type_.c_str(), state ? "ON" : "OFF");
+    return;
+  }
+  
   // Call the appropriate control method based on switch type
   if (this->switch_type_ == "usb") {
     this->parent_->control_usb(state);

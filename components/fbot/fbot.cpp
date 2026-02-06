@@ -52,6 +52,8 @@ void Fbot::dump_config() {
   ESP_LOGCONFIG(TAG, "Fbot Battery:");
   ESP_LOGCONFIG(TAG, "  Polling interval: %ums", this->polling_interval_);
   ESP_LOGCONFIG(TAG, "  Settings polling interval: %ums", this->settings_polling_interval_);
+  ESP_LOGCONFIG(TAG, "  Poll timeout: %ums", this->poll_timeout_ms_);
+  ESP_LOGCONFIG(TAG, "  Max poll failures: %u", this->max_poll_failures_);
   LOG_SENSOR("  ", "Battery Percent", this->battery_percent_sensor_);
   LOG_SENSOR("  ", "Battery S1 Percent", this->battery_percent_s1_sensor_);
   LOG_SENSOR("  ", "Battery S2 Percent", this->battery_percent_s2_sensor_);
@@ -743,7 +745,7 @@ void Fbot::check_poll_timeout() {
   }
   
   // Don't check if we've already hit max failures
-  if (this->consecutive_poll_failures_ >= MAX_POLL_FAILURES) {
+  if (this->consecutive_poll_failures_ >= this->max_poll_failures_) {
     return;
   }
   
@@ -751,7 +753,7 @@ void Fbot::check_poll_timeout() {
   uint32_t time_since_success = (this->last_successful_poll_ > 0) ? (now - this->last_successful_poll_) : 0;
   
   // Check if we've exceeded the timeout period since last successful poll
-  if (this->last_successful_poll_ > 0 && time_since_success > POLL_TIMEOUT_MS) {
+  if (this->last_successful_poll_ > 0 && time_since_success > this->poll_timeout_ms_) {
     // Increment failure counter only once per timeout period
     uint32_t time_since_poll = now - this->last_poll_time_;
     
@@ -759,14 +761,14 @@ void Fbot::check_poll_timeout() {
     if (time_since_poll >= this->polling_interval_) {
       this->consecutive_poll_failures_++;
       
-      ESP_LOGW(TAG, "Poll timeout detected (failure %d/%d)", this->consecutive_poll_failures_, MAX_POLL_FAILURES);
+      ESP_LOGW(TAG, "Poll timeout detected (failure %d/%d)", this->consecutive_poll_failures_, this->max_poll_failures_);
       
       // Update last_successful_poll to now plus timeout, so we wait another full timeout period
       // before incrementing again
       this->last_successful_poll_ = now;
       
       // Check if we've reached the maximum failures
-      if (this->consecutive_poll_failures_ >= MAX_POLL_FAILURES) {
+      if (this->consecutive_poll_failures_ >= this->max_poll_failures_) {
         ESP_LOGE(TAG, "Max poll failures reached - marking as disconnected and resetting sensors");
         this->reset_sensors_to_unknown();
         this->update_connected_state(false);

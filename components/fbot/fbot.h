@@ -63,6 +63,8 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   // Configuration
   void set_polling_interval(uint32_t interval) { this->polling_interval_ = interval; }
   void set_settings_polling_interval(uint32_t interval) { this->settings_polling_interval_ = interval; }
+  void set_poll_timeout(uint32_t timeout) { this->poll_timeout_ms_ = timeout; }
+  void set_max_poll_failures(uint8_t max_failures) { this->max_poll_failures_ = max_failures; }
   
   // Sensor setters
   void set_battery_percent_sensor(sensor::Sensor *sensor) { this->battery_percent_sensor_ = sensor; }
@@ -173,8 +175,8 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   
   // Polling failure tracking
   uint8_t consecutive_poll_failures_{0};
-  static const uint8_t MAX_POLL_FAILURES = 3;
-  static const uint32_t POLL_TIMEOUT_MS = 5000;  // 5 seconds timeout
+  uint8_t max_poll_failures_{3};
+  uint32_t poll_timeout_ms_{10000};  // 10 seconds timeout
   
   // Sensors
   sensor::Sensor *battery_percent_sensor_{nullptr};
