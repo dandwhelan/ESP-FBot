@@ -168,3 +168,17 @@ number:
       min_value: 0
       max_value: 50
       step: 1
+
+select:
+  - platform: fbot
+    fbot_id: my_fbot
+    light_mode:
+      name: "Light Mode"
+    ac_charge_limit:
+      name: "AC Charge Limit"
+      options:
+        - "300W"
+        - "500W"
+        - "700W"
+        - "900W"
+        - "1100W"

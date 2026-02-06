@@ -253,6 +253,14 @@ select:
     fbot_id: my_fbot
     light_mode:
       name: "Light Mode"
+    ac_charge_limit:
+      name: "AC Charge Limit"
+      options:
+        - "300W"
+        - "500W"
+        - "700W"
+        - "900W"
+        - "1100W"
 ```
 
 </details>
