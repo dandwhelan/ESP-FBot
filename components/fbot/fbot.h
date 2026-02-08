@@ -176,7 +176,7 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   // Polling failure tracking
   uint8_t consecutive_poll_failures_{0};
   uint8_t max_poll_failures_{3};
-  uint32_t poll_timeout_ms_{10000};  // 10 seconds timeout
+  uint32_t poll_timeout_ms_{15000};  // 15 seconds timeout
   
   // Sensors
   sensor::Sensor *battery_percent_sensor_{nullptr};
