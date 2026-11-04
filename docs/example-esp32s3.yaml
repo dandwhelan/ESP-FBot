@@ -1,0 +1,219 @@
+esphome:
+  name: fossibot-esp32s3
+  friendly_name: Fossibot ESP32-S3 Controller
+  comment: "Fossibot BLE to Home Assistant bridge for ESP32-S3"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+
+# Serial logging over USB-Serial/JTAG on ESP32-S3
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  level: INFO
+
+# Wi-Fi configuration with fallback AP
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Fossibot-S3-Fallback"
+    password: ""
+
+captive_portal:
+
+# Home Assistant native API
+api:
+  encryption:
+    key: "(PLACE YOUR ENCRYPTION KEY HERE)"
+
+ota:
+  - platform: esphome
+    password: "(PLACE YOUR OTA KEY HERE)"
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+ble_client:
+  - mac_address: "AA:BB:CC:DD:EE:FF"   # Replace with your Fossibot BLE MAC address
+    id: fbot_ble
+
+fbot:
+  id: my_fbot
+  ble_client_id: fbot_ble
+  polling_interval: 2s              # Status registers (0x1104)
+  settings_polling_interval: 30s    # Holding registers (0x1103)
+  poll_timeout: 15s
+  max_poll_failures: 5
+
+binary_sensor:
+  - platform: fbot
+    fbot_id: my_fbot
+    connected:
+      name: "Connected"
+    charging_active:
+      name: "Charging Active"
+    inverter_standby:
+      name: "Inverter Standby"
+    ac_out_active:
+      name: "AC Output Active"
+    ac_in_present:
+      name: "AC Grid Connected"
+    ac_in_charging:
+      name: "AC Grid Charging"
+    low_pv_in_present:
+      name: "Solar Low-PV Connected"
+    high_pv_in_present:
+      name: "Solar High-PV Connected"
+    car_in_present:
+      name: "Car DC Connected"
+    ups_bypass_active:
+      name: "UPS Bypass Mode"
+    critical_fault:
+      name: "Critical Hardware Fault"
+    temp_protection:
+      name: "Temperature Protection"
+    inverter_fault:
+      name: "Inverter Overload / Fault"
+    usb_active:
+      name: "USB Ports Active"
+    dc_active:
+      name: "DC Ports Active"
+    ac_active:
+      name: "AC Inverter Active"
+    light_active:
+      name: "Light Active"
+    battery_connected_s1:
+      name: "Expansion Battery 1 Connected"
+    battery_connected_s2:
+      name: "Expansion Battery 2 Connected"
+
+sensor:
+  - platform: fbot
+    fbot_id: my_fbot
+    battery_level:
+      name: "Battery SOC"
+      id: battery_percent
+    battery_capacity:
+      name: "Battery Capacity"
+    battery_voltage:
+      name: "Battery Voltage"
+    input_power:
+      name: "Total Input Power"
+      id: input_watts
+    ac_input_power:
+      name: "AC Input Power"
+    dc_input_power:
+      name: "DC Input Power"
+    output_power:
+      name: "Output Power"
+      id: output_watts
+    total_power:
+      name: "Total Output Power"
+    ac_grid_power:
+      name: "AC Grid Power"
+    remaining_time:
+      name: "Remaining Run Time"
+      id: remaining_minutes
+    time_to_full:
+      name: "Time to Full Charge"
+    time_to_empty:
+      name: "Time to Empty"
+    fan_level:
+      name: "Cooling Fan Level"
+    ac_out_voltage:
+      name: "AC Output Voltage"
+    ac_out_frequency:
+      name: "AC Output Frequency"
+    ac_in_voltage:
+      name: "AC Input Voltage"
+    error_code:
+      name: "Active Error Code"
+    protection_flags:
+      name: "Protection Flags"
+    status_flags:
+      name: "Status Flags"
+    hardware_id:
+      name: "Hardware Variant ID"
+    max_ac_input:
+      name: "Max AC Input Ceiling"
+    max_charge_current:
+      name: "Max Hardware Charge Current"
+    ac_mcu_version:
+      name: "AC MCU Version"
+    bms_mcu_version:
+      name: "BMS MCU Version"
+    pv_mcu_version:
+      name: "PV MCU Version"
+    dc_mcu_version:
+      name: "DC MCU Version"
+    usb_a1_power:
+      name: "USB-A1 Power"
+    usb_a2_power:
+      name: "USB-A2 Power"
+    usb_c1_power:
+      name: "USB-C1 Power"
+    usb_c2_power:
+      name: "USB-C2 Power"
+    usb_c3_power:
+      name: "USB-C3 Power"
+    usb_c4_power:
+      name: "USB-C4 Power"
+
+switch:
+  - platform: fbot
+    fbot_id: my_fbot
+    usb:
+      name: "USB Output"
+    dc:
+      name: "DC Output"
+    ac:
+      name: "AC Inverter"
+    light:
+      name: "Light"
+    ac_silent:
+      name: "Silent Charging Mode"
+    key_sound:
+      name: "Button Beep Tone"
+
+select:
+  - platform: fbot
+    fbot_id: my_fbot
+    light_mode:
+      name: "Light Mode"
+    ac_charge_limit:
+      name: "AC Charge Limit Profile"
+    machine_shutdown:
+      name: "Idle Auto-Shutdown Timer"
+
+number:
+  - platform: fbot
+    fbot_id: my_fbot
+    threshold_charge:
+      name: "Max Charge Limit"
+    threshold_discharge:
+      name: "Min Discharge Limit"
+    charge_current:
+      name: "Max Charging Current"
+    sleep_timer:
+      name: "Machine Shutdown Minutes"
+    screen_timeout:
+      name: "Screen Dim Timeout"
+    booking_charge:
+      name: "Scheduled Charge Delay"
+
+button:
+  - platform: fbot
+    fbot_id: my_fbot
+    power_off:
+      name: "Soft Power Off"
+
+text_sensor:
+  - platform: fbot
+    fbot_id: my_fbot
+    system_status:
+      name: "System Status Summary"

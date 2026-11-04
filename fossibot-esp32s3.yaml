@@ -1,0 +1,572 @@
+esphome:
+  name: fossibot-esp32s3
+  friendly_name: Fossibot ESP32-S3 Controller
+  comment: "Fossibot BLE to Home Assistant bridge with Waveshare 4.2 RLCD for ESP32-S3"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  cpu_frequency: 80MHz   # Battery saving: half of default 160MHz, plenty for BLE + Wi-Fi
+  framework:
+    type: esp-idf
+
+# 8MB Octal PSRAM required for ST7305 RLCD frame buffer
+psram:
+  mode: octal
+  speed: 80MHz
+
+# Native USB Serial/JTAG logging on ESP32-S3
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  level: INFO
+
+# Wi-Fi setup with Fallback Access Point if not configured or out of range
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: light   # Battery saving
+  ap:
+    ssid: "Fossibot-S3-Setup"
+    password: "fossibot123"
+
+captive_portal:
+
+# Home Assistant Native API
+api:
+  encryption:
+    key: !secret api_key
+
+# OTA Updates
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Web Server UI on Port 80 (Interactive control & settings dashboard)
+web_server:
+  port: 80
+
+# SPI bus configuration for Waveshare ESP32-S3-RLCD-4.2
+spi:
+  clk_pin: GPIO11
+  mosi_pin: GPIO12
+
+# Fonts for 400x300 RLCD Display
+font:
+  - file: "gfonts://Roboto"
+    id: font_title
+    size: 20
+  - file: "gfonts://Roboto"
+    id: font_large
+    size: 32
+  - file: "gfonts://Roboto"
+    id: font_medium
+    size: 15
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 11
+
+# Load updated local components
+external_components:
+  - source:
+      type: local
+      path: components
+
+# BLE Client connecting to the Fossibot power station
+ble_client:
+  - mac_address: "DC:1E:D5:E4:07:1E"
+    id: fbot_ble
+
+# Main Fossibot integration component
+fbot:
+  id: my_fbot
+  ble_client_id: fbot_ble
+  polling_interval: 5s              # Status polling interval (0x1104)
+  settings_polling_interval: 30s    # Settings polling interval (0x1103)
+  poll_timeout: 15s
+  max_poll_failures: 5
+
+binary_sensor:
+  - platform: fbot
+    fbot_id: my_fbot
+    connected:
+      name: "Connected"
+      id: fbot_connected
+    charging_active:
+      name: "Charging Active"
+      id: fbot_charging
+    inverter_standby:
+      name: "Inverter Standby"
+      id: fbot_inverter_standby
+    ac_out_active:
+      name: "AC Output Active"
+      id: fbot_ac_out_active
+    ac_in_present:
+      name: "AC Grid Connected"
+      id: fbot_ac_in_present
+    ac_in_charging:
+      name: "AC Grid Charging"
+      id: fbot_ac_in_charging
+    low_pv_in_present:
+      name: "Solar Low-PV Connected"
+      id: fbot_low_pv_in_present
+    high_pv_in_present:
+      name: "Solar High-PV Connected"
+      id: fbot_high_pv_in_present
+    car_in_present:
+      name: "Car DC Connected"
+      id: fbot_car_in_present
+    ups_bypass_active:
+      name: "UPS Bypass Mode"
+      id: fbot_ups_bypass
+    critical_fault:
+      name: "Critical Hardware Fault"
+      id: fbot_critical_fault
+    temp_protection:
+      name: "Temperature Protection"
+      id: fbot_temp_protection
+    inverter_fault:
+      name: "Inverter Fault"
+      id: fbot_inverter_fault
+    usb_active:
+      name: "USB Ports Active"
+      id: fbot_usb_active
+    dc_active:
+      name: "DC Ports Active"
+      id: fbot_dc_active
+    ac_active:
+      name: "AC Inverter Active"
+      id: fbot_ac_active
+    light_active:
+      name: "Light Active"
+      id: fbot_light_active
+    battery_connected_s1:
+      name: "Battery S1 Connected"
+    battery_connected_s2:
+      name: "Battery S2 Connected"
+
+  # Physical KEY button on Waveshare ESP32-S3-RLCD-4.2 (GPIO18)
+  - platform: gpio
+    pin:
+      number: GPIO18
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "Board Key Button"
+    id: board_key_button
+    on_press:
+      then:
+        - display.page.show_next: rlcd_display
+        - component.update: rlcd_display
+
+sensor:
+  # Board 18650 cell voltage (Waveshare ESP32-S3-RLCD-4.2: BAT_ADC on GPIO4, 1:3 divider).
+  # If it disagrees with a multimeter, adjust the multiply factor.
+  - platform: adc
+    pin: GPIO4
+    name: "Board Battery Voltage"
+    id: board_batt_v
+    attenuation: auto
+    update_interval: 30s
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    filters:
+      - multiply: 3.0
+      - sliding_window_moving_average:
+          window_size: 4
+          send_every: 1
+  - platform: template
+    name: "Board Battery Level"
+    id: board_batt_pct
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: 30s
+    lambda: |-
+          if (!id(board_batt_v).has_state()) return {};
+          float pct = (id(board_batt_v).state - 3.3f) / (4.15f - 3.3f) * 100.0f;
+          if (pct < 0) pct = 0;
+          if (pct > 100) pct = 100;
+          return pct;
+  - platform: fbot
+    fbot_id: my_fbot
+    battery_level:
+      name: "Battery SOC"
+      id: battery_percent
+    battery_capacity:
+      name: "Battery Capacity"
+      id: battery_capacity
+    battery_voltage:
+      name: "Battery Voltage"
+      id: battery_voltage
+    input_power:
+      name: "Total Input Power"
+      id: input_watts
+    ac_input_power:
+      name: "AC Input Power"
+      id: ac_input_watts
+    dc_input_power:
+      name: "DC Input Power"
+      id: dc_input_watts
+    output_power:
+      name: "Output Power"
+      id: output_watts
+    total_power:
+      name: "Total Output Power"
+      id: total_watts
+    ac_grid_power:
+      name: "AC Grid Power"
+      id: ac_grid_power
+    remaining_time:
+      name: "Remaining Run Time"
+      id: remaining_minutes
+    time_to_full:
+      name: "Time to Full Charge"
+      id: time_to_full
+    time_to_empty:
+      name: "Time to Empty"
+      id: time_to_empty
+    fan_level:
+      name: "Cooling Fan Level"
+      id: fan_level
+    ac_out_voltage:
+      name: "AC Output Voltage"
+      id: ac_out_voltage
+    ac_out_frequency:
+      name: "AC Output Frequency"
+      id: ac_out_frequency
+    ac_in_voltage:
+      name: "AC Input Voltage"
+      id: ac_in_voltage
+    error_code:
+      name: "Active Error Code"
+      id: error_code
+    protection_flags:
+      name: "Protection Flags"
+      id: protection_flags
+    status_flags:
+      name: "Status Flags"
+      id: status_flags
+    hardware_id:
+      name: "Hardware Variant ID"
+      id: hardware_id
+    max_ac_input:
+      name: "Max AC Input Ceiling"
+      id: max_ac_input
+    max_charge_current:
+      name: "Max Hardware Current"
+      id: max_charge_current
+    ac_mcu_version:
+      name: "AC MCU Version"
+      id: ac_mcu_version
+      accuracy_decimals: 1
+    bms_mcu_version:
+      name: "BMS MCU Version"
+      id: bms_mcu_version
+      accuracy_decimals: 1
+    pv_mcu_version:
+      name: "PV MCU Version"
+      id: pv_mcu_version
+      accuracy_decimals: 1
+    dc_mcu_version:
+      name: "DC MCU Version"
+      id: dc_mcu_version
+      accuracy_decimals: 1
+    usb_a1_power:
+      name: "USB-A1 Power"
+    usb_a2_power:
+      name: "USB-A2 Power"
+    usb_c1_power:
+      name: "USB-C1 Power"
+    usb_c2_power:
+      name: "USB-C2 Power"
+    usb_c3_power:
+      name: "USB-C3 Power"
+    usb_c4_power:
+      name: "USB-C4 Power"
+
+switch:
+  - platform: fbot
+    fbot_id: my_fbot
+    usb:
+      name: "USB Output"
+      id: switch_usb
+    dc:
+      name: "DC Output"
+      id: switch_dc
+    ac:
+      name: "AC Inverter"
+      id: switch_ac
+    light:
+      name: "Light"
+      id: switch_light
+    ac_silent:
+      name: "Silent Charging Mode"
+      id: switch_silent
+    key_sound:
+      name: "Button Beep Tone"
+      id: switch_key_sound
+
+select:
+  - platform: fbot
+    fbot_id: my_fbot
+    light_mode:
+      name: "Light Mode"
+      id: select_light_mode
+    ac_charge_limit:
+      name: "AC Charge Limit Profile"
+      id: select_ac_charge_limit
+    machine_shutdown:
+      name: "Idle Auto-Shutdown Timer"
+      id: select_machine_shutdown
+
+number:
+  - platform: fbot
+    fbot_id: my_fbot
+    threshold_charge:
+      name: "Max Charge %"
+      id: num_threshold_charge
+    threshold_discharge:
+      name: "Min Discharge %"
+      id: num_threshold_discharge
+    charge_current:
+      name: "Max Charging Current"
+      id: num_charge_current
+    sleep_timer:
+      name: "Machine Shutdown Minutes"
+      id: num_sleep_timer
+    screen_timeout:
+      name: "Screen Dim Timeout"
+      id: num_screen_timeout
+    booking_charge:
+      name: "Scheduled Charge Delay"
+      id: num_booking_charge
+
+button:
+  - platform: fbot
+    fbot_id: my_fbot
+    power_off:
+      name: "Soft Power Off"
+
+text_sensor:
+  - platform: fbot
+    fbot_id: my_fbot
+    system_status:
+      name: "System Status Summary"
+      id: text_system_status
+  - platform: wifi_info
+    ip_address:
+      name: "Device IP Address"
+      id: device_ip
+
+display:
+  - platform: st7305_rlcd
+    model: WAVESHARE_400X300
+    id: rlcd_display
+    cs_pin: GPIO40
+    dc_pin: GPIO5
+    reset_pin: GPIO41
+    rotation: 0
+    update_interval: 10s   # Battery saving: reflective LCD holds its image
+    pages:
+      # =========================================================================
+      # PAGE 1: LIVE DASHBOARD
+      # =========================================================================
+      - id: page_dashboard
+        lambda: |-
+          // 1. Top Header Banner
+          it.filled_rectangle(0, 0, 400, 26, COLOR_ON);
+          it.print(8, 5, id(font_medium), COLOR_OFF, TextAlign::TOP_LEFT, "FOSSIBOT POWER STATION");
+          if (id(board_batt_v).has_state()) {
+          it.printf(290, 7, id(font_small), COLOR_OFF, TextAlign::TOP_RIGHT, "BAT %.2fV %.0f%%", id(board_batt_v).state, id(board_batt_pct).has_state() ? id(board_batt_pct).state : 0.0f);
+          }
+          if (id(fbot_connected).state) {
+          it.print(392, 5, id(font_small), COLOR_OFF, TextAlign::TOP_RIGHT, "CONNECTED");
+          } else {
+          it.print(392, 5, id(font_small), COLOR_OFF, TextAlign::TOP_RIGHT, "SEARCHING...");
+          }
+
+          // 2. Input Power (Left Column)
+          it.print(12, 34, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "INPUT POWER");
+          float in_w = id(input_watts).has_state() ? id(input_watts).state : 0.0f;
+          it.printf(12, 48, id(font_large), COLOR_ON, TextAlign::TOP_LEFT, "%.0f W", in_w);
+          float ac_v = id(ac_in_voltage).has_state() ? id(ac_in_voltage).state : 0.0f;
+          it.printf(12, 86, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Grid: %.0f V", ac_v);
+          float ac_chg_w = id(ac_input_watts).has_state() ? id(ac_input_watts).state : 0.0f;
+          if (id(fbot_ups_bypass).state && ac_chg_w == 0.0f && in_w > 0.0f) {
+            it.printf(12, 102, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Bypass: %.0f W", in_w);
+          } else {
+            it.printf(12, 102, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "AC Chg: %.0f W", ac_chg_w);
+          }
+          float pv_w = id(dc_input_watts).has_state() ? id(dc_input_watts).state : 0.0f;
+          it.printf(12, 118, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Solar: %.0f W", pv_w);
+
+          // 3. Central Battery SOC & Gauge
+          float soc = id(battery_percent).has_state() ? id(battery_percent).state : 0.0f;
+          if (soc < 0.0f) soc = 0.0f;
+          if (soc > 100.0f) soc = 100.0f;
+
+          // Battery graphic outline
+          it.rectangle(155, 34, 90, 48, COLOR_ON);
+          it.filled_rectangle(245, 48, 5, 20, COLOR_ON); // Nub
+          int fill_w = (int)((84 * soc) / 100.0f);
+          if (fill_w > 0) {
+          it.filled_rectangle(158, 37, fill_w, 42, COLOR_ON);
+          }
+
+          it.printf(200, 88, id(font_title), COLOR_ON, TextAlign::TOP_CENTER, "%.1f %%", soc);
+          float bat_v = id(battery_voltage).has_state() ? id(battery_voltage).state : 0.0f;
+          float bat_ah = id(battery_capacity).has_state() ? id(battery_capacity).state : 0.0f;
+          it.printf(200, 110, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "%.2f V | %.1f Ah", bat_v, bat_ah);
+
+          // Remaining runtime / charging countdown
+          if (id(fbot_charging).state && id(time_to_full).has_state() && id(time_to_full).state > 0) {
+          int mins = (int)id(time_to_full).state;
+          it.printf(200, 126, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "Full in %02dh %02dm", mins / 60, mins % 60);
+          } else if (id(time_to_empty).has_state() && id(time_to_empty).state > 0) {
+          int mins = (int)id(time_to_empty).state;
+          it.printf(200, 126, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "Empty in %02dh %02dm", mins / 60, mins % 60);
+          } else if (id(text_system_status).has_state()) {
+          it.printf(200, 126, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "%s", id(text_system_status).state.c_str());
+          }
+
+          // 4. Output Power (Right Column)
+          it.print(388, 34, id(font_small), COLOR_ON, TextAlign::TOP_RIGHT, "OUTPUT POWER");
+          float out_w = id(output_watts).has_state() ? id(output_watts).state : 0.0f;
+          it.printf(388, 48, id(font_large), COLOR_ON, TextAlign::TOP_RIGHT, "%.0f W", out_w);
+          float tot_w = id(total_watts).has_state() ? id(total_watts).state : 0.0f;
+          it.printf(388, 86, id(font_small), COLOR_ON, TextAlign::TOP_RIGHT, "Total: %.0f W", tot_w);
+          float ac_out_v = id(ac_out_voltage).has_state() ? id(ac_out_voltage).state : 0.0f;
+          float ac_out_hz = id(ac_out_frequency).has_state() ? id(ac_out_frequency).state : 0.0f;
+          it.printf(388, 102, id(font_small), COLOR_ON, TextAlign::TOP_RIGHT, "AC: %.0fV %.0fHz", ac_out_v, ac_out_hz);
+          float fan = id(fan_level).has_state() ? id(fan_level).state : 0.0f;
+          it.printf(388, 118, id(font_small), COLOR_ON, TextAlign::TOP_RIGHT, "Cooling Fan: %.0f/5", fan);
+
+          // Divider
+          it.line(10, 144, 390, 144, COLOR_ON);
+
+          // 5. Output Port Badges (USB, AC, DC, LIGHT) - y=149..180
+          if (id(fbot_usb_active).state) {
+          it.filled_rectangle(12, 149, 88, 31, COLOR_ON);
+          it.print(56, 157, id(font_medium), COLOR_OFF, TextAlign::TOP_CENTER, "USB: ON");
+          } else {
+          it.rectangle(12, 149, 88, 31, COLOR_ON);
+          it.print(56, 157, id(font_medium), COLOR_ON, TextAlign::TOP_CENTER, "USB: OFF");
+          }
+
+          if (id(fbot_ac_active).state) {
+          it.filled_rectangle(108, 149, 88, 31, COLOR_ON);
+          it.print(152, 157, id(font_medium), COLOR_OFF, TextAlign::TOP_CENTER, "AC: ON");
+          } else {
+          it.rectangle(108, 149, 88, 31, COLOR_ON);
+          it.print(152, 157, id(font_medium), COLOR_ON, TextAlign::TOP_CENTER, "AC: OFF");
+          }
+
+          if (id(fbot_dc_active).state) {
+          it.filled_rectangle(204, 149, 88, 31, COLOR_ON);
+          it.print(248, 157, id(font_medium), COLOR_OFF, TextAlign::TOP_CENTER, "DC: ON");
+          } else {
+          it.rectangle(204, 149, 88, 31, COLOR_ON);
+          it.print(248, 157, id(font_medium), COLOR_ON, TextAlign::TOP_CENTER, "DC: OFF");
+          }
+
+          if (id(fbot_light_active).state) {
+          it.filled_rectangle(300, 149, 88, 31, COLOR_ON);
+          it.print(344, 157, id(font_medium), COLOR_OFF, TextAlign::TOP_CENTER, "LIGHT: ON");
+          } else {
+          it.rectangle(300, 149, 88, 31, COLOR_ON);
+          it.print(344, 157, id(font_medium), COLOR_ON, TextAlign::TOP_CENTER, "LIGHT: OFF");
+          }
+
+          // 6. Diagnostics / Operating Mode Banner - y=187..217
+          if (id(fbot_critical_fault).state) {
+          it.filled_rectangle(10, 187, 380, 28, COLOR_ON);
+          it.print(200, 193, id(font_medium), COLOR_OFF, TextAlign::TOP_CENTER, "CRITICAL HARDWARE FAULT (ERR 79)");
+          } else if (id(fbot_inverter_fault).state) {
+          it.filled_rectangle(10, 187, 380, 28, COLOR_ON);
+          it.print(200, 193, id(font_medium), COLOR_OFF, TextAlign::TOP_CENTER, "INVERTER TRIP FAULT (ERR 78)");
+          } else if (id(fbot_temp_protection).state) {
+          it.filled_rectangle(10, 187, 380, 28, COLOR_ON);
+          it.print(200, 193, id(font_medium), COLOR_OFF, TextAlign::TOP_CENTER, "TEMPERATURE EXTREME PROTECTION");
+          } else if (id(fbot_ups_bypass).state) {
+          it.filled_rectangle(10, 187, 380, 28, COLOR_ON);
+          it.print(200, 193, id(font_medium), COLOR_OFF, TextAlign::TOP_CENTER, "ACTIVE UPS BYPASS MODE");
+          } else {
+          it.rectangle(10, 187, 380, 28, COLOR_ON);
+          uint16_t prot = id(protection_flags).has_state() ? (uint16_t)id(protection_flags).state : 0;
+          it.printf(200, 193, id(font_medium), COLOR_ON, TextAlign::TOP_CENTER, "Normal Mode | Prot: 0x%04X | Silent: %s",
+          prot, id(switch_silent).state ? "ON" : "OFF");
+          }
+
+          // 7. Middle Status & Telemetry Strip (y=223..263) - fills the bottom space nicely
+          it.rectangle(10, 223, 380, 40, COLOR_ON);
+          float cur_limit = id(num_charge_current).has_state() ? id(num_charge_current).state : 0.0f;
+          float out_p = id(output_watts).has_state() ? id(output_watts).state : 0.0f;
+          it.printf(20, 227, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Charge Max: %.0f A | Silent: %s | Beep: %s",
+                    cur_limit, id(switch_silent).state ? "ON" : "OFF", id(switch_key_sound).state ? "ON" : "OFF");
+          it.printf(20, 244, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Output: %.0f W | Board: %.2fV (%.0f%%)",
+                    out_p, id(board_batt_v).has_state() ? id(board_batt_v).state : 0.0f,
+                    id(board_batt_pct).has_state() ? id(board_batt_pct).state : 0.0f);
+          if (id(device_ip).has_state() && id(device_ip).state.length() > 0) {
+          it.printf(380, 244, id(font_small), COLOR_ON, TextAlign::TOP_RIGHT, "IP: %s", id(device_ip).state.c_str());
+          }
+
+          // 8. Bottom Navigation Footer (y=270..296)
+          it.line(10, 270, 390, 270, COLOR_ON);
+          it.print(12, 278, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "[KEY] -> Settings & Limits");
+          it.print(388, 278, id(font_small), COLOR_ON, TextAlign::TOP_RIGHT, "Web: http://fossibot-esp32s3.local");
+      # =========================================================================
+      # PAGE 2: SETTINGS & POWER LIMITS
+      # =========================================================================
+      - id: page_settings
+        lambda: |-
+          // 1. Header Banner
+          it.filled_rectangle(0, 0, 400, 26, COLOR_ON);
+          it.print(8, 5, id(font_medium), COLOR_OFF, TextAlign::TOP_LEFT, "STATION SETTINGS & POWER LIMITS");
+          it.print(392, 5, id(font_small), COLOR_OFF, TextAlign::TOP_RIGHT, "MODBUS V0");
+
+          // 2. Left Column Box (Charging & Sounds) - y=32..254
+          it.rectangle(10, 32, 186, 222, COLOR_ON);
+          it.print(18, 38, id(font_medium), COLOR_ON, TextAlign::TOP_LEFT, "CHARGING & AUDIO");
+          it.line(10, 56, 196, 56, COLOR_ON);
+
+          float cur = id(num_charge_current).has_state() ? id(num_charge_current).state : 0.0f;
+          it.printf(18, 66, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Max Charge Cur : %.0f A", cur);
+          it.printf(18, 92, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "AC Silent Mode : %s", id(switch_silent).state ? "ON" : "OFF");
+          it.printf(18, 118, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Key Beep Tone  : %s", id(switch_key_sound).state ? "ON" : "OFF");
+          float chg_max = id(num_threshold_charge).has_state() ? id(num_threshold_charge).state : 100.0f;
+          it.printf(18, 144, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Max Charge Cap : %.0f %%", chg_max);
+          float dchg_min = id(num_threshold_discharge).has_state() ? id(num_threshold_discharge).state : 0.0f;
+          it.printf(18, 170, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Min Discharge  : %.0f %%", dchg_min);
+          float scr_to = id(num_screen_timeout).has_state() ? id(num_screen_timeout).state : 0.0f;
+          it.printf(18, 196, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Screen Dim Time: %.0f min", scr_to);
+          float in_max = id(max_ac_input).has_state() ? id(max_ac_input).state : 1100.0f;
+          it.printf(18, 222, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Max AC Input   : %.0f W", in_max);
+
+          // 3. Right Column Box (Timers & Sub-MCUs) - y=32..254
+          it.rectangle(204, 32, 186, 222, COLOR_ON);
+          it.print(212, 38, id(font_medium), COLOR_ON, TextAlign::TOP_LEFT, "TIMERS & FIRMWARE");
+          it.line(204, 56, 390, 56, COLOR_ON);
+
+          float sleep_m = id(num_sleep_timer).has_state() ? id(num_sleep_timer).state : 5.0f;
+          it.printf(212, 66, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Idle Shutdown  : %.0f min", sleep_m);
+          float book_m = id(num_booking_charge).has_state() ? id(num_booking_charge).state : 0.0f;
+          it.printf(212, 92, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Booking Delay  : %.0f min", book_m);
+          float ac_v = id(ac_mcu_version).has_state() ? id(ac_mcu_version).state : 0.0f;
+          it.printf(212, 118, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "AC MCU Version : v%.1f", ac_v);
+          float bms_v = id(bms_mcu_version).has_state() ? id(bms_mcu_version).state : 0.0f;
+          it.printf(212, 144, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "BMS Version    : v%.1f", bms_v);
+          float pv_v = id(pv_mcu_version).has_state() ? id(pv_mcu_version).state : 0.0f;
+          it.printf(212, 170, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "PV MPPT Version: v%.1f", pv_v);
+          float dc_v = id(dc_mcu_version).has_state() ? id(dc_mcu_version).state : 0.0f;
+          it.printf(212, 196, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Panel MCU Vers : v%.1f", dc_v);
+          uint16_t hw_id = id(hardware_id).has_state() ? (uint16_t)id(hardware_id).state : 0;
+          it.printf(212, 222, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "Hardware ID    : 0x%04X", hw_id);
+
+          // 4. Bottom Footer Navigation & Web UI callout
+          it.line(10, 264, 390, 264, COLOR_ON);
+          it.print(12, 274, id(font_small), COLOR_ON, TextAlign::TOP_LEFT, "[KEY BUTTON] -> Return to Dashboard");
+          if (id(device_ip).has_state() && id(device_ip).state.length() > 0) {
+          it.printf(388, 274, id(font_small), COLOR_ON, TextAlign::TOP_RIGHT, "Web: http://%s", id(device_ip).state.c_str());
+          } else {
+          it.print(388, 274, id(font_small), COLOR_ON, TextAlign::TOP_RIGHT, "Web: Adjust settings via browser");
+          }

@@ -8,31 +8,25 @@ DEPENDENCIES = ["fbot"]
 
 CONF_LIGHT_MODE = "light_mode"
 CONF_AC_CHARGE_LIMIT = "ac_charge_limit"
+CONF_MACHINE_SHUTDOWN = "machine_shutdown"
 
 FbotSelect = fbot_ns.class_("FbotSelect", select.Select, cg.Component)
 
-# Light mode options mapping to register values
 LIGHT_MODE_OPTIONS = {
     "Off": 0,
     "On": 1,
-    "SOS": 2,
-    "Flashing": 3,
+    "Flash": 2,
+    "SOS": 3,
 }
 
-# AC Charge Limit default options mapping to register values (1-5)
 AC_CHARGE_LIMIT_DEFAULT_OPTIONS = ["300W", "500W", "700W", "900W", "1100W"]
+MACHINE_SHUTDOWN_OPTIONS = ["5 min", "10 min", "30 min", "60 min", "480 min (8h)"]
 
 SELECT_TYPES = {
     CONF_LIGHT_MODE: "light_mode",
     CONF_AC_CHARGE_LIMIT: "ac_charge_limit",
+    CONF_MACHINE_SHUTDOWN: "machine_shutdown",
 }
-
-def validate_ac_charge_limit_options(config):
-    """Validate that exactly 5 options are provided for AC Charge Limit."""
-    if CONF_OPTIONS in config:
-        if len(config[CONF_OPTIONS]) != 5:
-            raise cv.Invalid("AC Charge Limit must have exactly 5 options (mapping to values 1-5)")
-    return config
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -50,13 +44,16 @@ CONFIG_SCHEMA = cv.Schema(
                 cv.Length(min=5, max=5),
             ),
         }),
+        cv.Optional(CONF_MACHINE_SHUTDOWN): select.select_schema(
+            FbotSelect,
+            icon="mdi:power-sleep",
+        ),
     }
 )
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_FBOT_ID])
     
-    # Handle Light Mode select
     if CONF_LIGHT_MODE in config:
         var = await select.new_select(config[CONF_LIGHT_MODE], options=list(LIGHT_MODE_OPTIONS.keys()))
         await cg.register_component(var, config[CONF_LIGHT_MODE])
@@ -64,7 +61,6 @@ async def to_code(config):
         cg.add(var.set_select_type("light_mode"))
         cg.add(parent.set_light_mode_select(var))
     
-    # Handle AC Charge Limit select
     if CONF_AC_CHARGE_LIMIT in config:
         ac_config = config[CONF_AC_CHARGE_LIMIT]
         options = ac_config.get(CONF_OPTIONS, AC_CHARGE_LIMIT_DEFAULT_OPTIONS)
@@ -73,3 +69,10 @@ async def to_code(config):
         cg.add(var.set_parent(parent))
         cg.add(var.set_select_type("ac_charge_limit"))
         cg.add(parent.set_ac_charge_limit_select(var))
+
+    if CONF_MACHINE_SHUTDOWN in config:
+        var = await select.new_select(config[CONF_MACHINE_SHUTDOWN], options=MACHINE_SHUTDOWN_OPTIONS)
+        await cg.register_component(var, config[CONF_MACHINE_SHUTDOWN])
+        cg.add(var.set_parent(parent))
+        cg.add(var.set_select_type("machine_shutdown"))
+        cg.add(parent.set_machine_shutdown_select(var))
