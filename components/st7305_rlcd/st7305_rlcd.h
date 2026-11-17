@@ -103,6 +103,10 @@ class ST7305RLCD : public display::DisplayBuffer,
   // Pixel coordinate lookup tables for O(1) buffer access
   uint16_t *pixel_index_lut_{nullptr};
   uint8_t *pixel_bit_lut_{nullptr};
+
+  // Last written frame, to skip redundant refreshes
+  uint32_t last_frame_hash_{0};
+  bool last_frame_valid_{false};
 };
 
 }  // namespace st7305_rlcd

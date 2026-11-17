@@ -18,7 +18,7 @@ psram:
 # Native USB Serial/JTAG logging on ESP32-S3
 logger:
   hardware_uart: USB_SERIAL_JTAG
-  level: INFO
+  level: WARN   # Battery saving: less logging work
 
 # Wi-Fi setup with Fallback Access Point if not configured or out of range
 wifi:
@@ -80,9 +80,9 @@ ble_client:
 fbot:
   id: my_fbot
   ble_client_id: fbot_ble
-  polling_interval: 5s              # Status polling interval (0x1104)
-  settings_polling_interval: 30s    # Settings polling interval (0x1103)
-  poll_timeout: 15s
+  polling_interval: 15s             # Status polling (0x1104). Battery saving: was 5s
+  settings_polling_interval: 120s   # Settings polling (0x1103). Battery saving: was 30s
+  poll_timeout: 45s
   max_poll_failures: 5
 
 binary_sensor:
@@ -366,7 +366,7 @@ display:
     dc_pin: GPIO5
     reset_pin: GPIO41
     rotation: 0
-    update_interval: 10s   # Battery saving: reflective LCD holds its image
+    update_interval: 30s   # Battery saving: only redraws when content changes; KEY forces a refresh
     pages:
       # =========================================================================
       # PAGE 1: LIVE DASHBOARD

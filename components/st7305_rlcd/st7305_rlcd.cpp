@@ -137,6 +137,17 @@ void ST7305RLCD::dump_config() {
 
 void ST7305RLCD::update() {
   this->do_update_();
+  if (this->buffer_ == nullptr)
+    return;
+  // Skip the SPI transfer and panel wake if the frame hasn't changed
+  uint32_t hash = 2166136261u;  // FNV-1a
+  for (size_t i = 0; i < this->buffer_size_; i++) {
+    hash = (hash ^ this->buffer_[i]) * 16777619u;
+  }
+  if (this->last_frame_valid_ && hash == this->last_frame_hash_)
+    return;
+  this->last_frame_hash_ = hash;
+  this->last_frame_valid_ = true;
   this->write_display_();
 }
 
@@ -328,8 +339,8 @@ void ST7305RLCD::init_display_() {
   this->send_command_(0xD0);
   this->send_data_(0xFF);
 
-  // High Power Mode On
-  this->send_command_(0x38);
+  // Low Power Mode: panel holds image at a reduced refresh rate (much lower current)
+  this->send_command_(0x39);
 
   // Display On
   this->send_command_(0x29);
@@ -459,6 +470,9 @@ void ST7305RLCD::write_display_() {
   this->dc_pin_->digital_write(true);   // Data mode (CS still LOW)
   this->write_array(this->buffer_, this->buffer_size_);
   this->disable();                       // CS HIGH
+
+  // Drop back to Low Power Mode; the reflective panel retains the image
+  this->send_command_(0x39);
 }
 
 // =============================================================================
