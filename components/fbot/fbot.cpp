@@ -144,7 +144,8 @@ void Fbot::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_i
         this->last_poll_time_ = now;
         this->last_settings_request_time_ = now;
         this->send_read_request();
-        this->set_timeout(500, [this]() { this->send_settings_request(); });
+        if (this->settings_on_connect_)
+          this->set_timeout(500, [this]() { this->send_settings_request(); });
       }
       break;
     }

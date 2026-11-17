@@ -2,6 +2,8 @@ esphome:
   name: fossibot-esp32s3
   friendly_name: Fossibot ESP32-S3 Controller
   comment: "Fossibot BLE to Home Assistant bridge with Waveshare 4.2 RLCD for ESP32-S3"
+  includes:
+    - rtc_counters.h
   on_boot:
     # Runs before the display is set up: release the pins held during deep sleep
     - priority: 1000
@@ -50,10 +52,22 @@ script:
   - id: sleep_cycle
     mode: single
     then:
+      # Low BLE TX power: the power station sits right next to the board
+      - lambda: |-
+          esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_N0);
+          esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, ESP_PWR_LVL_N0);
+          esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_CONN_HDL0, ESP_PWR_LVL_N0);
+      # Give up quickly if the power station doesn't answer
       - wait_until:
           condition:
             lambda: 'return id(battery_percent).has_state() && id(total_watts).has_state();'
-          timeout: 60s
+          timeout: 25s
+      # Settings (limits, versions) rarely change: fetch on every 6th wake (~hourly)
+      - lambda: |-
+          if (id(battery_percent).has_state() && (rtc_wake_count % 6 == 0)) {
+            id(my_fbot).request_settings();
+          }
+          rtc_wake_count++;
       - wait_until:
           condition:
             api.connected:
@@ -72,7 +86,16 @@ script:
             - deep_sleep.prevent: deep_sleep_ctrl
             - logger.log: "Stay awake enabled in Home Assistant, not sleeping"
           else:
-            - deep_sleep.enter: deep_sleep_ctrl
+            # Back off when the power station is unreachable: 10, 20, 40, 60 min
+            - lambda: |-
+                if (id(battery_percent).has_state()) rtc_ble_fail_count = 0;
+                else if (rtc_ble_fail_count < 3) rtc_ble_fail_count++;
+            - deep_sleep.enter:
+                id: deep_sleep_ctrl
+                sleep_duration: !lambda |-
+                  static const uint32_t mins[] = {10, 20, 40, 60};
+                  return mins[rtc_ble_fail_count] * 60 * 1000;
+
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -144,6 +167,11 @@ external_components:
       path: components
 
 # BLE Client connecting to the Fossibot power station
+# Passive scanning: no scan-request transmissions while looking for the power station
+esp32_ble_tracker:
+  scan_parameters:
+    active: false
+
 ble_client:
   - mac_address: "DC:1E:D5:E4:07:1E"
     id: fbot_ble
@@ -153,7 +181,8 @@ fbot:
   id: my_fbot
   ble_client_id: fbot_ble
   polling_interval: 15s             # Status polling (0x1104). Battery saving: was 5s
-  settings_polling_interval: 120s   # Settings polling (0x1103). Battery saving: was 30s
+  settings_polling_interval: 60min  # Settings (0x1103). Requested by sleep_cycle every 6th wake instead
+  settings_on_connect: false        # Battery saving: don't fetch settings on every wake
   poll_timeout: 45s
   max_poll_failures: 5
 
