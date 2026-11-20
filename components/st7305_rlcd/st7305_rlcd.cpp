@@ -14,6 +14,11 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
 
+#ifdef USE_ESP32
+#include "driver/gpio.h"
+#include "esp_sleep.h"
+#endif
+
 namespace esphome {
 namespace st7305_rlcd {
 
@@ -29,16 +34,29 @@ void ST7305RLCD::setup() {
   // Apply model-specific settings
   this->apply_model_settings_();
 
-  // Configure pins
+  // Woken from deep sleep with the panel still powered and showing the last frame?
+  bool resume = false;
+#ifdef USE_ESP32
+  resume = this->keep_image_ && esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_UNDEFINED;
+#endif
+
+  // Configure pins. Output levels are set before the pins are switched to
+  // output, so RESET never pulses low when the deep-sleep hold is released.
+  this->dc_pin_->digital_write(true);
   this->dc_pin_->setup();
   this->dc_pin_->digital_write(true);
 
   if (this->reset_pin_ != nullptr) {
+    this->reset_pin_->digital_write(true);
     this->reset_pin_->setup();
+    this->reset_pin_->digital_write(true);
   }
 
-  // Initialize SPI
+  // Initialize SPI (drives CS high)
   this->spi_setup();
+
+  // Pins now drive the same levels they were held at; let go of the hold
+  this->release_held_pins_();
 
   // Allocate display buffer
   ExternalRAMAllocator<uint8_t> buffer_allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
@@ -58,9 +76,14 @@ void ST7305RLCD::setup() {
     return;
   }
 
-  // Hardware initialization
-  this->hardware_reset_();
-  this->init_display_();
+  // Hardware initialization. After a deep-sleep wake the controller kept its
+  // configuration and frame, so leave it alone; the next update redraws.
+  if (resume) {
+    ESP_LOGCONFIG(TAG, "Woke from deep sleep: keeping panel image, skipping reset");
+  } else {
+    this->hardware_reset_();
+    this->init_display_();
+  }
 
   ESP_LOGCONFIG(TAG, "ST7305 RLCD setup complete");
 }
@@ -135,8 +158,45 @@ void ST7305RLCD::dump_config() {
 // Display Operations
 // =============================================================================
 
+void ST7305RLCD::release_held_pins_() {
+#ifdef USE_ESP32
+  if (!this->keep_image_)
+    return;
+  for (int pin : this->hold_pins_) {
+    if (pin >= 0)
+      gpio_hold_dis(static_cast<gpio_num_t>(pin));
+  }
+  gpio_deep_sleep_hold_dis();
+#endif
+}
+
+void ST7305RLCD::on_powerdown() {
+#ifdef USE_ESP32
+  // Freeze CS (high), DC and RESET (high) so the panel keeps refreshing its
+  // last frame while the ESP32 sleeps. Released again in setup().
+  if (!this->keep_image_ || this->is_failed())
+    return;
+  for (int pin : this->hold_pins_) {
+    if (pin >= 0)
+      gpio_hold_en(static_cast<gpio_num_t>(pin));
+  }
+  gpio_deep_sleep_hold_en();
+#endif
+}
+
 void ST7305RLCD::update() {
   this->do_update_();
+  if (this->buffer_ == nullptr)
+    return;
+  // Skip the SPI transfer and panel wake if the frame hasn't changed
+  uint32_t hash = 2166136261u;  // FNV-1a
+  for (size_t i = 0; i < this->buffer_size_; i++) {
+    hash = (hash ^ this->buffer_[i]) * 16777619u;
+  }
+  if (this->last_frame_valid_ && hash == this->last_frame_hash_)
+    return;
+  this->last_frame_hash_ = hash;
+  this->last_frame_valid_ = true;
   this->write_display_();
 }
 
@@ -328,8 +388,8 @@ void ST7305RLCD::init_display_() {
   this->send_command_(0xD0);
   this->send_data_(0xFF);
 
-  // High Power Mode On
-  this->send_command_(0x38);
+  // Low Power Mode: panel holds image at a reduced refresh rate (much lower current)
+  this->send_command_(0x39);
 
   // Display On
   this->send_command_(0x29);
@@ -459,6 +519,9 @@ void ST7305RLCD::write_display_() {
   this->dc_pin_->digital_write(true);   // Data mode (CS still LOW)
   this->write_array(this->buffer_, this->buffer_size_);
   this->disable();                       // CS HIGH
+
+  // Drop back to Low Power Mode; the reflective panel retains the image
+  this->send_command_(0x39);
 }
 
 // =============================================================================

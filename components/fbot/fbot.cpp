@@ -1,6 +1,7 @@
 #include "fbot.h"
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
+#include "esp_attr.h"
 
 #ifdef USE_ESP32
 
@@ -9,10 +10,29 @@ namespace fbot {
 
 static const char *const TAG = "fbot";
 
+// Last settings (0x1103) response, kept in RTC slow memory so it survives deep
+// sleep. Lets settings show straight after a wake without asking the power station.
+static const uint32_t SETTINGS_CACHE_MAGIC = 0x46425354;  // "FBST"
+static const uint16_t SETTINGS_CACHE_MAX = 256;
+struct SettingsCache {
+  uint32_t magic;
+  uint16_t length;
+  uint8_t data[SETTINGS_CACHE_MAX];
+};
+static RTC_DATA_ATTR SettingsCache rtc_settings_cache = {0, 0, {0}};
+
 void Fbot::setup() {
   ESP_LOGCONFIG(TAG, "Setting up Fbot...");
   this->reset_sensors_to_unknown();
   this->update_connected_state(false);
+  // Republish settings cached before deep sleep (once entities are set up)
+  if (rtc_settings_cache.magic == SETTINGS_CACHE_MAGIC && rtc_settings_cache.length > 0 &&
+      rtc_settings_cache.length <= SETTINGS_CACHE_MAX) {
+    this->defer([this]() {
+      ESP_LOGD(TAG, "Restoring cached settings (%u bytes)", rtc_settings_cache.length);
+      this->parse_settings_notification(rtc_settings_cache.data, rtc_settings_cache.length);
+    });
+  }
 }
 
 void Fbot::loop() {
@@ -144,7 +164,8 @@ void Fbot::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_i
         this->last_poll_time_ = now;
         this->last_settings_request_time_ = now;
         this->send_read_request();
-        this->set_timeout(500, [this]() { this->send_settings_request(); });
+        if (this->settings_on_connect_)
+          this->set_timeout(500, [this]() { this->send_settings_request(); });
       }
       break;
     }
@@ -280,6 +301,11 @@ void Fbot::parse_notification(const uint8_t *data, uint16_t length) {
   }
   
   if (data[1] == 0x03) {
+    if (length <= SETTINGS_CACHE_MAX) {
+      memcpy(rtc_settings_cache.data, data, length);
+      rtc_settings_cache.length = length;
+      rtc_settings_cache.magic = SETTINGS_CACHE_MAGIC;
+    }
     this->parse_settings_notification(data, length);
     return;
   } else if (data[1] == 0x04) {
