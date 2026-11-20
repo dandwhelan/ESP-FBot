@@ -3,7 +3,6 @@
 #include "esp_attr.h"
 #include "esp_bt.h"
 #include "esp_sleep.h"
-#include "driver/gpio.h"
 
 static RTC_DATA_ATTR uint32_t rtc_wake_count = 0;
 static RTC_DATA_ATTR uint8_t rtc_ble_fail_count = 0;

@@ -53,6 +53,14 @@ class ST7305RLCD : public display::DisplayBuffer,
   void set_width(uint16_t width) { this->width_ = width; }
   void set_height(uint16_t height) { this->height_ = height; }
   void set_orientation(ST7305Orientation orientation) { this->orientation_ = orientation; }
+  /// Hold CS/DC/RESET through deep sleep and skip the panel reset on wake (ESP32 only)
+  void set_keep_image_in_deep_sleep(int cs, int dc, int reset) {
+    this->keep_image_ = true;
+    this->hold_pins_[0] = cs;
+    this->hold_pins_[1] = dc;
+    this->hold_pins_[2] = reset;
+  }
+  void on_powerdown() override;
 
   /// Enter sleep mode (lowest power, display blanks, RAM retained)
   void sleep();
@@ -103,6 +111,11 @@ class ST7305RLCD : public display::DisplayBuffer,
   // Pixel coordinate lookup tables for O(1) buffer access
   uint16_t *pixel_index_lut_{nullptr};
   uint8_t *pixel_bit_lut_{nullptr};
+
+  // Deep sleep image retention
+  void release_held_pins_();
+  bool keep_image_{false};
+  int hold_pins_[3]{-1, -1, -1};  // CS, DC, RESET
 
   // Last written frame, to skip redundant refreshes
   uint32_t last_frame_hash_{0};
