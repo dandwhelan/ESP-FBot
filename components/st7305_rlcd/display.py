@@ -5,7 +5,9 @@ import esphome.config_validation as cv
 from esphome import pins
 from esphome.components import display, spi
 from esphome.const import (
+    CONF_CS_PIN,
     CONF_DC_PIN,
+    CONF_NUMBER,
     CONF_ID,
     CONF_LAMBDA,
     CONF_MODEL,
@@ -20,6 +22,7 @@ DEPENDENCIES = ["spi"]
 AUTO_LOAD = ["display"]
 
 CONF_ORIENTATION = "orientation"
+CONF_KEEP_IMAGE_IN_DEEP_SLEEP = "keep_image_in_deep_sleep"
 
 st7305_rlcd_ns = cg.esphome_ns.namespace("st7305_rlcd")
 ST7305RLCD = st7305_rlcd_ns.class_(
@@ -69,6 +72,9 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_WIDTH): cv.int_range(min=1, max=800),
             cv.Optional(CONF_HEIGHT): cv.int_range(min=1, max=800),
             cv.Optional(CONF_ORIENTATION): cv.enum(ORIENTATIONS, upper=True),
+            # ESP32 only: hold CS/DC/RESET through deep sleep and skip the panel
+            # reset on wake, so the image stays on screen between wakes.
+            cv.Optional(CONF_KEEP_IMAGE_IN_DEEP_SLEEP, default=False): cv.boolean,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -92,6 +98,16 @@ async def to_code(config):
         cg.add(var.set_reset_pin(reset_pin))
 
     cg.add(var.set_model(config[CONF_MODEL]))
+
+    if config[CONF_KEEP_IMAGE_IN_DEEP_SLEEP]:
+        reset_num = config[CONF_RESET_PIN][CONF_NUMBER] if CONF_RESET_PIN in config else -1
+        cg.add(
+            var.set_keep_image_in_deep_sleep(
+                config[CONF_CS_PIN][CONF_NUMBER],
+                config[CONF_DC_PIN][CONF_NUMBER],
+                reset_num,
+            )
+        )
 
     if config[CONF_MODEL] == "CUSTOM":
         cg.add(var.set_width(config[CONF_WIDTH]))
