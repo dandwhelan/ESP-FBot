@@ -339,6 +339,8 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   bool settings_on_connect_{true};
   uint32_t last_poll_time_{0};
   uint32_t last_successful_poll_{0};
+  uint32_t disconnected_since_{0};
+  bool sensors_reset_{true};
   uint32_t last_settings_request_time_{0};
   
   // Connection state

@@ -21,6 +21,8 @@ struct SettingsCache {
 };
 static RTC_DATA_ATTR SettingsCache rtc_settings_cache = {0, 0, {0}};
 
+static const uint32_t SENSOR_GRACE_MS = 60000;
+
 void Fbot::setup() {
   ESP_LOGCONFIG(TAG, "Setting up Fbot...");
   this->reset_sensors_to_unknown();
@@ -36,6 +38,14 @@ void Fbot::setup() {
 }
 
 void Fbot::loop() {
+  // After a link drop keep the last values for a grace period (reconnects are
+  // normally quick); only show "unknown" if the power station stays away.
+  if (!this->connected_ && !this->sensors_reset_ && this->disconnected_since_ != 0 &&
+      millis() - this->disconnected_since_ > SENSOR_GRACE_MS) {
+    ESP_LOGW(TAG, "No connection for %us, marking sensors unknown", SENSOR_GRACE_MS / 1000);
+    this->reset_sensors_to_unknown();
+    this->sensors_reset_ = true;
+  }
   // Poll for data if connected
   if (this->connected_ && this->characteristics_discovered_) {
     uint32_t now = millis();
@@ -102,6 +112,8 @@ void Fbot::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_i
         this->connected_ = true;
         this->consecutive_poll_failures_ = 0;
         this->last_successful_poll_ = 0;
+        this->disconnected_since_ = 0;
+        this->sensors_reset_ = false;
         this->update_connected_state(true);
       } else {
         ESP_LOGW(TAG, "Connection failed, status=%d", param->open.status);
@@ -114,6 +126,7 @@ void Fbot::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_i
       ESP_LOGW(TAG, "Disconnected from Fbot");
       this->connected_ = false;
       this->characteristics_discovered_ = false;
+      this->disconnected_since_ = millis() ? millis() : 1;
       this->update_connected_state(false);
       break;
     }
@@ -856,9 +869,11 @@ void Fbot::check_poll_timeout() {
       this->last_successful_poll_ = now;
       
       if (this->consecutive_poll_failures_ >= this->max_poll_failures_) {
-        ESP_LOGE(TAG, "Max poll failures reached - marking as disconnected and resetting sensors");
-        this->reset_sensors_to_unknown();
-        this->update_connected_state(false);
+        // Link is up but the power station stopped answering: drop it so the BLE
+        // client reconnects. Sensor values are kept for the grace period (see loop()).
+        ESP_LOGW(TAG, "Max poll failures reached - forcing reconnect");
+        this->consecutive_poll_failures_ = 0;
+        this->parent()->disconnect();
       }
     }
   }

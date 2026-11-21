@@ -46,7 +46,13 @@ script:
     then:
       # Low BLE TX power: the power station sits right next to the board
       # (connection power is set when the link comes up, see fbot_connected)
+      # BLE controller isn't up yet at on_boot: calling this too early crashes (null deref)
+      - wait_until:
+          condition:
+            lambda: 'return esphome::esp32_ble::global_ble != nullptr && esphome::esp32_ble::global_ble->is_active();'
+          timeout: 15s
       - lambda: |-
+          if (esphome::esp32_ble::global_ble == nullptr || !esphome::esp32_ble::global_ble->is_active()) return;
           esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_N0);
           esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, ESP_PWR_LVL_N0);
       # Give up quickly if the power station doesn't answer
@@ -187,10 +193,12 @@ external_components:
       path: components
 
 # BLE Client connecting to the Fossibot power station
-# Passive scanning: no scan-request transmissions while looking for the power station
+# Active scan with a high duty cycle so the power station is found quickly after each wake
 esp32_ble_tracker:
   scan_parameters:
-    active: false
+    interval: 200ms
+    window: 100ms
+    active: true
 
 ble_client:
   - mac_address: "DC:1E:D5:E4:07:1E"
@@ -200,11 +208,11 @@ ble_client:
 fbot:
   id: my_fbot
   ble_client_id: fbot_ble
-  polling_interval: 15s             # Status polling (0x1104). Battery saving: was 5s
+  polling_interval: 5s              # Status polling (0x1104). 15s let the link go quiet / drop
   settings_polling_interval: 60min  # Settings (0x1103). Requested by wake_cycle every 6th wake instead
   settings_on_connect: false        # Battery saving: don't fetch settings on every wake
-  poll_timeout: 45s
-  max_poll_failures: 5
+  poll_timeout: 20s
+  max_poll_failures: 3
 
 binary_sensor:
   # Home Assistant helper that keeps the device awake (create input_boolean.fossibot_stay_awake)
