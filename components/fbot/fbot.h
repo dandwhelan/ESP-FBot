@@ -136,6 +136,9 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   // Configuration
   void set_polling_interval(uint32_t interval) { this->polling_interval_ = interval; }
   void set_settings_polling_interval(uint32_t interval) { this->settings_polling_interval_ = interval; }
+  void set_settings_on_connect(bool v) { this->settings_on_connect_ = v; }
+  /// Request the settings block (0x1103) now, e.g. from a lambda
+  void request_settings() { this->send_settings_request(); }
   void set_poll_timeout(uint32_t timeout) { this->poll_timeout_ms_ = timeout; }
   void set_max_poll_failures(uint8_t max_failures) { this->max_poll_failures_ = max_failures; }
   
@@ -333,8 +336,11 @@ class Fbot : public esphome::ble_client::BLEClientNode, public Component {
   // Timing
   uint32_t polling_interval_{2000};
   uint32_t settings_polling_interval_{60000};
+  bool settings_on_connect_{true};
   uint32_t last_poll_time_{0};
   uint32_t last_successful_poll_{0};
+  uint32_t disconnected_since_{0};
+  bool sensors_reset_{true};
   uint32_t last_settings_request_time_{0};
   
   // Connection state

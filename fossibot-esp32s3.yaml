@@ -2,6 +2,126 @@ esphome:
   name: fossibot-esp32s3
   friendly_name: Fossibot ESP32-S3 Controller
   comment: "Fossibot BLE to Home Assistant bridge with Waveshare 4.2 RLCD for ESP32-S3"
+  includes:
+    - rtc_counters.h
+  on_boot:
+    # Wake cycle: wait for fresh BLE data + Home Assistant, redraw, sleep again
+    - priority: -100
+      then:
+        - script.execute: wake_cycle
+        - script.execute: awake_watchdog
+
+# =============================================================================
+# BATTERY SAVING: DEEP SLEEP CYCLE
+# Wakes every 10 min, reads the power station over BLE, reports to Home
+# Assistant, redraws the screen and sleeps. Press KEY to wake early (stays
+# awake 60s so you can flip pages).
+# To keep it awake (OTA updates, debugging) turn on this HA helper:
+#   input_boolean.fossibot_stay_awake
+# The display driver holds its pins during sleep (keep_image_in_deep_sleep)
+# so the screen keeps showing the last frame.
+# =============================================================================
+deep_sleep:
+  id: deep_sleep_ctrl
+  sleep_duration: 10min     # Normal path uses sleep_or_stay (with backoff); awake_watchdog caps awake time
+  wakeup_pin:               # Board KEY button (active low)
+    number: GPIO18
+    inverted: true
+    allow_other_uses: true
+    mode:
+      input: true
+      pullup: true
+  wakeup_pin_mode: INVERT_WAKEUP
+
+globals:
+  # Set once the first full frame of this wake has been drawn
+  - id: screen_ready
+    type: bool
+    initial_value: 'false'
+
+script:
+  # Runs once per wake
+  - id: wake_cycle
+    mode: single
+    then:
+      # Low BLE TX power: the power station sits right next to the board
+      # (connection power is set when the link comes up, see fbot_connected)
+      # BLE controller isn't up yet at on_boot: calling this too early crashes (null deref)
+      - wait_until:
+          condition:
+            lambda: 'return esphome::esp32_ble::global_ble != nullptr && esphome::esp32_ble::global_ble->is_active();'
+          timeout: 15s
+      - lambda: |-
+          if (esphome::esp32_ble::global_ble == nullptr || !esphome::esp32_ble::global_ble->is_active()) return;
+          esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_N0);
+          esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, ESP_PWR_LVL_N0);
+      # Give up quickly if the power station doesn't answer
+      - wait_until:
+          condition:
+            lambda: 'return id(battery_percent).has_state() && id(total_watts).has_state();'
+          timeout: 25s
+      # Settings (limits, versions) rarely change: fetch on every 6th wake (~hourly).
+      # Between fetches the fbot component restores them from RTC memory.
+      - lambda: |-
+          if (id(battery_percent).has_state() && (rtc_wake_count % 6 == 0)) {
+            id(my_fbot).request_settings();
+          }
+          rtc_wake_count++;
+      - wait_until:
+          condition:
+            api.connected:
+          timeout: 20s
+      - delay: 3s               # Let state updates reach Home Assistant
+      - component.update: rlcd_display
+      - globals.set:
+          id: screen_ready
+          value: 'true'
+      - if:
+          condition:
+            lambda: 'return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0;'
+          then:
+            - delay: 60s        # Woken by KEY: give time to use the screen
+      - script.execute: sleep_or_stay
+
+  # Sleep now, unless Home Assistant asks the device to stay awake
+  - id: sleep_or_stay
+    mode: single
+    then:
+      - if:
+          condition:
+            binary_sensor.is_on: ha_stay_awake
+          then:
+            - deep_sleep.prevent: deep_sleep_ctrl
+            - logger.log:
+                level: WARN
+                format: "Stay awake enabled in Home Assistant, not sleeping"
+          else:
+            - component.update: rlcd_display
+            # Back off when the power station is unreachable: 10, 20, 40, 60 min
+            - lambda: |-
+                if (id(battery_percent).has_state()) rtc_ble_fail_count = 0;
+                else if (rtc_ble_fail_count < 3) rtc_ble_fail_count++;
+            - deep_sleep.enter:
+                id: deep_sleep_ctrl
+                sleep_duration: !lambda |-
+                  static const uint32_t mins[] = {10, 20, 40, 60};
+                  return mins[rtc_ble_fail_count] * 60 * 1000;
+
+  # Safety net: cap awake time at 180s if wake_cycle stalls (still uses backoff)
+  - id: awake_watchdog
+    mode: restart
+    then:
+      - delay: 180s
+      - if:
+          condition:
+            - script.is_running: wake_cycle
+          then:
+            - logger.log:
+                level: WARN
+                format: "Wake cycle took too long, forcing sleep"
+            - script.stop: wake_cycle
+            - script.execute: sleep_or_stay
+
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -18,13 +138,14 @@ psram:
 # Native USB Serial/JTAG logging on ESP32-S3
 logger:
   hardware_uart: USB_SERIAL_JTAG
-  level: INFO
+  level: WARN   # Battery saving: less logging work
 
 # Wi-Fi setup with Fallback Access Point if not configured or out of range
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   power_save_mode: light   # Battery saving
+  fast_connect: true       # Skip full scan on each wake (single SSID)
   ap:
     ssid: "Fossibot-S3-Setup"
     password: "fossibot123"
@@ -72,6 +193,13 @@ external_components:
       path: components
 
 # BLE Client connecting to the Fossibot power station
+# Active scan with a high duty cycle so the power station is found quickly after each wake
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 200ms
+    window: 100ms
+    active: true
+
 ble_client:
   - mac_address: "DC:1E:D5:E4:07:1E"
     id: fbot_ble
@@ -80,17 +208,40 @@ ble_client:
 fbot:
   id: my_fbot
   ble_client_id: fbot_ble
-  polling_interval: 5s              # Status polling interval (0x1104)
-  settings_polling_interval: 30s    # Settings polling interval (0x1103)
-  poll_timeout: 15s
-  max_poll_failures: 5
+  polling_interval: 5s              # Status polling (0x1104). 15s let the link go quiet / drop
+  settings_polling_interval: 60min  # Settings (0x1103). Requested by wake_cycle every 6th wake instead
+  settings_on_connect: false        # Battery saving: don't fetch settings on every wake
+  poll_timeout: 20s
+  max_poll_failures: 3
 
 binary_sensor:
+  # Home Assistant helper that keeps the device awake (create input_boolean.fossibot_stay_awake)
+  - platform: homeassistant
+    id: ha_stay_awake
+    entity_id: input_boolean.fossibot_stay_awake
+    on_press:
+      then:
+        - deep_sleep.prevent: deep_sleep_ctrl
+    on_release:
+      then:
+        - deep_sleep.allow: deep_sleep_ctrl
+        # Go back to sleep, unless this wake's cycle is still running (it sleeps when done)
+        - if:
+            condition:
+              not:
+                - script.is_running: wake_cycle
+            then:
+              - script.execute: sleep_or_stay
+
   - platform: fbot
     fbot_id: my_fbot
     connected:
       name: "Connected"
       id: fbot_connected
+      on_press:
+        then:
+          # Low TX power on the BLE link (only takes effect once connected)
+          - lambda: 'esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_CONN_HDL0, ESP_PWR_LVL_N0);'
     charging_active:
       name: "Charging Active"
       id: fbot_charging
@@ -148,6 +299,7 @@ binary_sensor:
   - platform: gpio
     pin:
       number: GPIO18
+      allow_other_uses: true
       inverted: true
       mode:
         input: true
@@ -358,6 +510,17 @@ text_sensor:
       name: "Device IP Address"
       id: device_ip
 
+# While awake (KEY window, stay-awake), refresh the screen every 30s once the
+# first full frame of this wake is drawn. Unchanged frames are skipped by the driver.
+interval:
+  - interval: 30s
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_ready);'
+          then:
+            - component.update: rlcd_display
+
 display:
   - platform: st7305_rlcd
     model: WAVESHARE_400X300
@@ -366,7 +529,10 @@ display:
     dc_pin: GPIO5
     reset_pin: GPIO41
     rotation: 0
-    update_interval: 10s   # Battery saving: reflective LCD holds its image
+    keep_image_in_deep_sleep: true   # Hold pins in deep sleep so the last frame stays on screen
+    # Redraws are driven by wake_cycle, the KEY button and the 30s interval below,
+    # so the screen isn't overwritten with blank values before BLE data arrives
+    update_interval: never
     pages:
       # =========================================================================
       # PAGE 1: LIVE DASHBOARD
